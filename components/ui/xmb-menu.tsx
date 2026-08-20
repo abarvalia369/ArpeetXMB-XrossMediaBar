@@ -342,6 +342,13 @@ export function XmbMenu() {
             <motion.div
               key={item.id}
               className="absolute left-0"
+              // `top` is a layout property, not a transform — without a matching `initial`,
+              // Framer Motion defaults a fresh mount's starting value to 0 (the very top of
+              // the container), so on every category switch (new key -> new mount) the item
+              // would visibly slide down from the top of the screen. `initial={false}` makes
+              // it appear immediately at its correct itemY() position instead; the jump-over
+              // animation between items within an already-mounted column is unaffected.
+              initial={false}
               animate={{
                 top: `${y}vh`,
                 scale: selected ? 1 : ICON_ITEM_UNSELECTED / ICON_ITEM_SELECTED,
