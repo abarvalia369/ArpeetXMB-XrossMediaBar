@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import { Rubik } from "next/font/google";
-import { XmbMenu } from "@/components/ui/xmb-menu";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const rubik = Rubik({
-  subsets: ["latin"],
+const rodin = localFont({
+  src: "../fonts/sce-ps3-rodin.ttf",
   variable: "--font-sans",
-  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -42,16 +41,8 @@ export const viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={rubik.variable}>
-      <body className="font-sans antialiased bg-black text-white">
-        <a href="#main" className="skip-link">
-          Skip to content
-        </a>
-        {/* Rendered once here (not per-page) so it never remounts on navigation —
-            same background, same running wave animation, on every route. */}
-        <XmbMenu />
-        {children}
-      </body>
+    <html lang="en" className={rodin.variable}>
+      <body className="font-sans antialiased bg-black text-white">{children}</body>
     </html>
   );
 }
