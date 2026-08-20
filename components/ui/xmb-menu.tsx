@@ -9,8 +9,8 @@ import { ExternalLinkPanel } from "@/components/panels/external-link-panel";
 // ---- Fixed screen anchors (spec §1), derived frame-by-frame from the PS3 XMB ----
 const ROW_Y = 25.3; // vh — category row centerline
 const SELECT_Y = 45.4; // vh — selected column item centerline
-const AXIS_X = 29.5; // vw — column axis, closed
-const OPEN_AXIS_X = 15; // vw — column axis, open
+const AXIS_X = 29.5; // vw — column axis, BROWSE
+const OPEN_AXIS_X = 15; // vw — column axis, OPEN
 const CATEGORY_PITCH = 10.47; // vw — spacing between category icons
 const PITCH = 7.5; // vh — spacing between non-selected column items
 const SEL_GAP = 16.25; // vh — selected item to its immediate neighbour
@@ -27,8 +27,10 @@ const DURATION = 0.3;
 const WHEEL_COOLDOWN = 250;
 const WHEEL_THRESHOLD = 24;
 const DRAG_MIN_PX = 12;
+const PANEL_SCROLL_STEP = 120;
 
-// §3.1 — piecewise layout with a hole where the row sits.
+// spec §3.1 — the ONLY column layout function. Piecewise, with a hole where the
+// row sits. Used identically in BROWSE and OPEN — only opacity/x differ between them.
 function itemY(i: number, s: number) {
   if (i === s) return SELECT_Y;
   if (i > s) return SELECT_Y + SEL_GAP + (i - s - 1) * PITCH;
@@ -36,35 +38,30 @@ function itemY(i: number, s: number) {
   return ROW_Y - ABOVE_GAP - (k - 1) * PITCH;
 }
 
-// §4.1.3 — the row is gone in the open state, so the hole closes into a plain list.
-function itemYOpen(i: number, s: number) {
-  if (i === s) return SELECT_Y;
-  if (i > s) return SELECT_Y + SEL_GAP + (i - s - 1) * PITCH;
-  return SELECT_Y - SEL_GAP - (s - i - 1) * PITCH;
-}
-
 interface XmbState {
   categoryIndex: number;
-  itemIndex: number | null;
+  itemIndex: number;
+  isOpen: boolean;
 }
 
 function readStateFromUrl(): XmbState {
-  if (typeof window === "undefined") return { categoryIndex: 0, itemIndex: null };
+  if (typeof window === "undefined") return { categoryIndex: 0, itemIndex: 0, isOpen: false };
   const params = new URLSearchParams(window.location.search);
   const found = NAV.findIndex((cat) => cat.id === params.get("c"));
   const categoryIndex = found === -1 ? 0 : found;
-  const iSlug = params.get("i");
-  if (!iSlug) return { categoryIndex, itemIndex: null };
-  const itemIndex = NAV[categoryIndex].items.findIndex((it) => it.id === iSlug);
-  return { categoryIndex, itemIndex: itemIndex === -1 ? null : itemIndex };
+  const items = NAV[categoryIndex].items;
+  const idx = items.findIndex((it) => it.id === params.get("i"));
+  const itemIndex = idx === -1 ? 0 : idx;
+  return { categoryIndex, itemIndex, isOpen: params.get("o") === "1" };
 }
 
 function writeStateToUrl(state: XmbState, push: boolean) {
   const cat = NAV[state.categoryIndex];
-  const item = state.itemIndex !== null ? cat.items[state.itemIndex] : null;
+  const item = cat.items[state.itemIndex];
   const params = new URLSearchParams();
   params.set("c", cat.id);
-  if (item) params.set("i", item.id);
+  params.set("i", item.id);
+  if (state.isOpen) params.set("o", "1");
   const url = `${window.location.pathname}?${params.toString()}`;
   if (push) window.history.pushState(null, "", url);
   else window.history.replaceState(null, "", url);
@@ -73,37 +70,38 @@ function writeStateToUrl(state: XmbState, push: boolean) {
 export function XmbMenu() {
   const reduced = useReducedMotion();
   const rootRef = React.useRef<HTMLDivElement>(null);
+  const panelRef = React.useRef<HTMLDivElement>(null);
 
   const [categoryIndex, setCategoryIndex] = React.useState(0);
-  const [itemIndex, setItemIndex] = React.useState<number | null>(null);
+  const [itemIndex, setItemIndex] = React.useState(0);
+  const [isOpen, setIsOpen] = React.useState(false);
   const readyRef = React.useRef(false);
 
-  // Initialize from the URL on mount, then focus the root so keyboard nav works immediately.
   React.useEffect(() => {
     const initial = readStateFromUrl();
     setCategoryIndex(initial.categoryIndex);
     setItemIndex(initial.itemIndex);
+    setIsOpen(initial.isOpen);
     readyRef.current = true;
     rootRef.current?.focus();
   }, []);
 
-  // Shallow URL sync (spec §5): replaceState on every change, pushState only on
-  // category changes and open/close, so Back stays usable without spamming history.
-  const prevStateRef = React.useRef<XmbState>({ categoryIndex: 0, itemIndex: null });
+  const prevStateRef = React.useRef<XmbState>({ categoryIndex: 0, itemIndex: 0, isOpen: false });
   React.useEffect(() => {
     if (!readyRef.current) return;
     const prev = prevStateRef.current;
     const categoryChanged = prev.categoryIndex !== categoryIndex;
-    const openChanged = (prev.itemIndex === null) !== (itemIndex === null);
-    writeStateToUrl({ categoryIndex, itemIndex }, categoryChanged || openChanged);
-    prevStateRef.current = { categoryIndex, itemIndex };
-  }, [categoryIndex, itemIndex]);
+    const openChanged = prev.isOpen !== isOpen;
+    writeStateToUrl({ categoryIndex, itemIndex, isOpen }, categoryChanged || openChanged);
+    prevStateRef.current = { categoryIndex, itemIndex, isOpen };
+  }, [categoryIndex, itemIndex, isOpen]);
 
   React.useEffect(() => {
     function onPopState() {
       const state = readStateFromUrl();
       setCategoryIndex(state.categoryIndex);
       setItemIndex(state.itemIndex);
+      setIsOpen(state.isOpen);
       prevStateRef.current = state;
     }
     window.addEventListener("popstate", onPopState);
@@ -112,87 +110,110 @@ export function XmbMenu() {
 
   const category = NAV[categoryIndex];
   const items = category.items;
-  const isOpen = itemIndex !== null;
-  const s = itemIndex ?? 0;
+  const s = itemIndex;
 
   const spring = reduced ? { duration: 0 } : { duration: DURATION, ease: EASE };
 
   const goCategory = React.useCallback((next: number) => {
-    setCategoryIndex((cur) => {
-      const clamped = Math.max(0, Math.min(NAV.length - 1, next));
-      return clamped === cur ? cur : clamped;
-    });
-    setItemIndex(null);
+    const clamped = Math.max(0, Math.min(NAV.length - 1, next));
+    setCategoryIndex(clamped);
+    setItemIndex(0);
+    setIsOpen(false);
   }, []);
 
   const moveItem = React.useCallback(
     (delta: number) => {
-      setItemIndex((cur) => {
-        if (cur === null) {
-          return delta > 0 && items.length > 0 ? 0 : null;
-        }
-        const next = cur + delta;
-        if (next < 0) return null;
-        return Math.max(0, Math.min(items.length - 1, next));
-      });
+      setItemIndex((cur) => Math.max(0, Math.min(items.length - 1, cur + delta)));
     },
     [items.length]
+  );
+
+  const scrollPanel = React.useCallback(
+    (delta: number) => {
+      panelRef.current?.scrollBy({ top: delta * PANEL_SCROLL_STEP, behavior: reduced ? "auto" : "smooth" });
+    },
+    [reduced]
   );
 
   const openExternal = React.useCallback((item: Item) => {
     if (item.kind === "external") window.open(item.url, "_blank", "noopener,noreferrer");
   }, []);
 
-  const handleItemClick = React.useCallback(
+  // Enter, or clicking the already-selected item (spec §4.2 preamble).
+  const openSelected = React.useCallback(() => {
+    setIsOpen(true);
+    openExternal(items[itemIndex]);
+  }, [items, itemIndex, openExternal]);
+
+  const handleCategoryClick = React.useCallback(
     (i: number) => {
-      setItemIndex(i);
-      openExternal(items[i]);
+      if (i === categoryIndex) {
+        setIsOpen((prev) => !prev);
+      } else {
+        goCategory(i);
+      }
     },
-    [items, openExternal]
+    [categoryIndex, goCategory]
   );
 
-  // ---- Keyboard (spec §7) ----
+  const handleItemClick = React.useCallback(
+    (i: number) => {
+      if (i === itemIndex) {
+        setIsOpen(true);
+        openExternal(items[i]);
+      } else {
+        setItemIndex(i);
+      }
+    },
+    [itemIndex, items, openExternal]
+  );
+
+  // ---- Keyboard (spec §7, §4.4) ----
   const onKeyDown = React.useCallback(
     (e: React.KeyboardEvent) => {
       switch (e.key) {
         case "ArrowLeft":
           e.preventDefault();
-          if (isOpen) setItemIndex(null);
+          if (isOpen) setIsOpen(false);
           else goCategory(categoryIndex - 1);
           break;
         case "ArrowRight":
           e.preventDefault();
-          goCategory(categoryIndex + 1);
+          if (!isOpen) goCategory(categoryIndex + 1);
           break;
         case "ArrowUp":
           e.preventDefault();
-          moveItem(-1);
+          if (isOpen) scrollPanel(-1);
+          else moveItem(-1);
           break;
         case "ArrowDown":
           e.preventDefault();
-          moveItem(1);
+          if (isOpen) scrollPanel(1);
+          else moveItem(1);
           break;
         case "Enter":
           e.preventDefault();
-          if (itemIndex !== null) openExternal(items[itemIndex]);
+          if (!isOpen) openSelected();
           break;
         case "Escape":
         case "Backspace":
           e.preventDefault();
-          setItemIndex(null);
+          if (isOpen) setIsOpen(false);
           break;
       }
     },
-    [categoryIndex, isOpen, itemIndex, items, goCategory, moveItem, openExternal]
+    [categoryIndex, isOpen, goCategory, moveItem, scrollPanel, openSelected]
   );
 
-  // ---- Wheel: one step per gesture, 250ms debounce (spec §7) ----
+  // ---- Wheel: one step per gesture, 250ms debounce (spec §7). Disabled while OPEN —
+  // the panel just gets native scroll instead (spec §4.4). ----
   React.useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
     let acc = 0;
     let until = 0;
     function onWheel(e: WheelEvent) {
+      if (isOpen) return;
       const horizontalDominant = Math.abs(e.deltaX) > Math.abs(e.deltaY);
       e.preventDefault();
       const now = e.timeStamp;
@@ -211,13 +232,17 @@ export function XmbMenu() {
     }
     root.addEventListener("wheel", onWheel, { passive: false });
     return () => root.removeEventListener("wheel", onWheel);
-  }, [categoryIndex, goCategory, moveItem]);
+  }, [isOpen, categoryIndex, goCategory, moveItem]);
 
-  // ---- Drag: horizontal → category, vertical → item, snap on release (spec §7) ----
+  // ---- Drag: horizontal → category, vertical → item, snap on release. Disabled while OPEN. ----
   const dragStart = React.useRef<{ x: number; y: number } | null>(null);
-  const onPointerDown = React.useCallback((e: React.PointerEvent) => {
-    dragStart.current = { x: e.clientX, y: e.clientY };
-  }, []);
+  const onPointerDown = React.useCallback(
+    (e: React.PointerEvent) => {
+      if (isOpen) return;
+      dragStart.current = { x: e.clientX, y: e.clientY };
+    },
+    [isOpen]
+  );
   const onPointerUp = React.useCallback(
     (e: React.PointerEvent) => {
       const start = dragStart.current;
@@ -240,8 +265,8 @@ export function XmbMenu() {
   );
 
   const rowTranslateX = AXIS_X - categoryIndex * CATEGORY_PITCH;
-  const columnAxisX = isOpen ? OPEN_AXIS_X : AXIS_X;
-  const activeItem = items[s] as Item | undefined;
+  const survivorAxisX = isOpen ? OPEN_AXIS_X : AXIS_X;
+  const selectedItem = items[itemIndex] as Item | undefined;
 
   return (
     <div
@@ -259,13 +284,10 @@ export function XmbMenu() {
         style={{ top: `${ROW_Y}vh`, height: "42vh", transform: "translateY(-50%)" }}
       />
 
-      {/* Category row — z-index 1, hides completely when open (spec §4.1.1) */}
-      <motion.div
-        className="absolute left-0 z-10 w-full"
-        style={{ top: `${ROW_Y}vh` }}
-        animate={{ opacity: isOpen ? 0 : 1, y: isOpen ? -60 : 0 }}
-        transition={spring}
-      >
+      {/* Category row — z-index 1. In BROWSE, fully visible (spec §4.1). In OPEN, every
+          icon (active included) fades to 0 — the survivor layer below represents the
+          active one instead, so it can move to OPEN_AXIS_X independently of its siblings. */}
+      <div className="absolute left-0 z-10 w-full" style={{ top: `${ROW_Y}vh` }}>
         <motion.div className="relative h-0" animate={{ x: `${rowTranslateX}vw` }} transition={spring}>
           {NAV.map((cat, i) => {
             const active = i === categoryIndex;
@@ -277,7 +299,7 @@ export function XmbMenu() {
                 tabIndex={-1}
                 aria-current={active ? "true" : undefined}
                 aria-label={cat.label}
-                onClick={() => goCategory(i)}
+                onClick={() => handleCategoryClick(i)}
                 style={{ left: `${i * CATEGORY_PITCH}vw` }}
                 className="absolute top-0 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center bg-transparent outline-none"
               >
@@ -285,7 +307,7 @@ export function XmbMenu() {
                   animate={{
                     width: active ? ICON_CAT_ACTIVE : ICON_CAT,
                     height: active ? ICON_CAT_ACTIVE : ICON_CAT,
-                    opacity: active ? 1 : 0.55,
+                    opacity: isOpen ? 0 : active ? 1 : 0.55,
                   }}
                   transition={spring}
                   className="flex items-center justify-center"
@@ -293,88 +315,122 @@ export function XmbMenu() {
                 >
                   <Icon width="100%" height="100%" />
                 </motion.span>
-                <span
+                <motion.span
+                  animate={{ opacity: isOpen ? 0 : active ? 1 : 0.5 }}
+                  transition={spring}
                   className="absolute top-full mt-[9px] whitespace-nowrap text-[11px] uppercase tracking-[0.08em]"
-                  style={{ opacity: active ? 1 : 0.5, fontWeight: active ? 700 : 400 }}
+                  style={{ fontWeight: active ? 700 : 400 }}
                 >
                   {cat.label}
-                </span>
+                </motion.span>
               </button>
             );
           })}
         </motion.div>
+      </div>
+
+      {/* Column — z-index 2, ABOVE the row, so the item travelling through the row's
+          vertical band during BROWSE up/down draws in front of the row icons (spec §3.2).
+          x is fixed at AXIS_X always — only the survivor layer moves to OPEN_AXIS_X.
+          y always comes from itemY() — there is no second layout function. */}
+      <div className="absolute top-0 z-20 h-full" style={{ left: `${AXIS_X}vw` }}>
+        {items.map((item, i) => {
+          const selected = i === itemIndex;
+          const y = itemY(i, s);
+          const Icon = item.icon;
+          return (
+            <motion.div
+              key={item.id}
+              className="absolute left-0"
+              animate={{
+                top: `${y}vh`,
+                scale: selected ? 1 : ICON_ITEM_UNSELECTED / ICON_ITEM_SELECTED,
+                opacity: isOpen ? 0 : selected ? 1 : i < s ? 0.45 : 0.6,
+              }}
+              transition={spring}
+            >
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => handleItemClick(i)}
+                style={{ width: ICON_ITEM_SELECTED, height: ICON_ITEM_SELECTED, transform: "translate(-50%, -50%)" }}
+                className="absolute left-0 top-0 flex items-center justify-center bg-transparent outline-none"
+              >
+                <Icon width="100%" height="100%" />
+              </button>
+              <span
+                style={{ left: `${LABEL_OFFSET}vw`, transform: "translateY(-50%)", fontSize: selected ? 21 : 17, fontWeight: selected ? 700 : 400 }}
+                className="absolute top-0 whitespace-nowrap"
+              >
+                {item.label}
+              </span>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* OPEN survivors — z-index 3. The active category icon and the selected item icon,
+          independently positioned so only this pair moves to OPEN_AXIS_X while the rest of
+          the row/column just fade in place (spec §4.2). Invisible + non-interactive in BROWSE. */}
+      <motion.div
+        className="absolute left-0 top-0 z-30 h-full"
+        animate={{ x: `${survivorAxisX}vw`, opacity: isOpen ? 1 : 0 }}
+        transition={spring}
+        style={{ pointerEvents: isOpen ? "auto" : "none" }}
+      >
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label={`Close ${category.label}`}
+          onClick={() => handleCategoryClick(categoryIndex)}
+          style={{ top: `${ROW_Y}vh`, width: ICON_CAT_ACTIVE, height: ICON_CAT_ACTIVE, transform: "translate(-50%, -50%)" }}
+          className="absolute left-0 flex items-center justify-center bg-transparent outline-none"
+        >
+          {React.createElement(category.icon, { width: "100%", height: "100%" })}
+        </button>
+        <span
+          style={{ top: `calc(${ROW_Y}vh + ${ICON_CAT_ACTIVE / 2}px + 9px)`, left: 0, transform: "translateX(-50%)" }}
+          className="absolute whitespace-nowrap text-[11px] font-bold uppercase tracking-[0.08em]"
+        >
+          {category.label}
+        </span>
+
+        {selectedItem && (
+          <>
+            <button
+              type="button"
+              tabIndex={-1}
+              onClick={() => handleItemClick(itemIndex)}
+              style={{ top: `${SELECT_Y}vh`, left: 0, width: ICON_ITEM_SELECTED, height: ICON_ITEM_SELECTED, transform: "translate(-50%, -50%)" }}
+              className="absolute flex items-center justify-center bg-transparent outline-none"
+            >
+              {React.createElement(selectedItem.icon, { width: "100%", height: "100%" })}
+            </button>
+            <span
+              style={{ top: `${SELECT_Y}vh`, left: `${LABEL_OFFSET}vw`, transform: "translateY(-50%)", fontSize: 21, fontWeight: 700 }}
+              className="absolute whitespace-nowrap"
+            >
+              {selectedItem.label}
+            </span>
+          </>
+        )}
       </motion.div>
 
-      {/* Column — z-index 2, ABOVE the row (spec §3.2 "z-order").
-          No `mode="wait"`: the outgoing and incoming columns are meant to briefly
-          overlap near the axis during a category change (spec §2, step 2). */}
+      {/* Content panel — z-index 4. spec §4.2: left 32vw, right 90vw (=58vw wide), heading
+          near SELECT_Y. Up/Down scrolls this internally while OPEN (spec §4.4). */}
       <AnimatePresence>
-        <motion.div
-          key={category.id}
-          className="absolute top-0 z-20 h-full"
-          initial={reduced ? false : { opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0, left: `${columnAxisX}vw` }}
-          exit={reduced ? undefined : { opacity: 0, x: 20 }}
-          transition={spring}
-        >
-          {items.map((item, i) => {
-            // `s` (defaulted to 0) is only a layout anchor for itemY — visual emphasis
-            // must key off the real itemIndex, or item 0 looks selected while closed.
-            const selected = isOpen && i === itemIndex;
-            const y = isOpen ? itemYOpen(i, s) : itemY(i, s);
-            const Icon = item.icon;
-            return (
-              <motion.div
-                key={item.id}
-                className="absolute left-0"
-                animate={{
-                  top: `${y}vh`,
-                  scale: selected ? 1 : ICON_ITEM_UNSELECTED / ICON_ITEM_SELECTED,
-                  opacity: selected ? 1 : i < s ? 0.45 : 0.6,
-                }}
-                transition={spring}
-              >
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  onClick={() => handleItemClick(i)}
-                  style={{ width: ICON_ITEM_SELECTED, height: ICON_ITEM_SELECTED, transform: "translate(-50%, -50%)" }}
-                  className="absolute left-0 top-0 flex items-center justify-center bg-transparent outline-none"
-                >
-                  <Icon width="100%" height="100%" />
-                </button>
-                <span
-                  style={{
-                    left: `${LABEL_OFFSET}vw`,
-                    transform: "translateY(-50%)",
-                    fontSize: selected ? 21 : 17,
-                    fontWeight: selected ? 700 : 400,
-                    textShadow: selected ? "0 0 14px rgba(255,255,255,0.6)" : undefined,
-                  }}
-                  className="absolute top-0 whitespace-nowrap"
-                >
-                  {item.label}
-                </span>
-              </motion.div>
-            );
-          })}
-        </motion.div>
-      </AnimatePresence>
-
-      {/* Content panel — highlight-triggered, right side, no navigation (spec §4).
-          Cross-fades (old out, new in, overlapping), not sequential — spec §4.2. */}
-      <AnimatePresence>
-        {isOpen && activeItem && (
+        {isOpen && selectedItem && (
           <motion.div
-            key={`${category.id}:${activeItem.id}`}
-            className="absolute overflow-y-auto"
-            style={{ left: "38vw", right: "12vw", top: "36.8vh", bottom: "4vh" }}
-            initial={reduced ? false : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
+            key={`${category.id}:${selectedItem.id}`}
+            ref={panelRef}
+            className="absolute z-40 overflow-y-auto"
+            style={{ left: "32vw", width: "58vw", top: `${SELECT_Y}vh`, bottom: "4vh" }}
+            initial={reduced ? false : { opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
             exit={reduced ? undefined : { opacity: 0 }}
-            transition={{ duration: reduced ? 0 : 0.2 }}
+            transition={{ duration: reduced ? 0 : 0.25, delay: reduced ? 0 : 0.1 }}
           >
-            <PanelBody item={activeItem} />
+            <PanelBody item={selectedItem} />
           </motion.div>
         )}
       </AnimatePresence>
