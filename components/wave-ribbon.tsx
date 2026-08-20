@@ -1,7 +1,8 @@
-export function WaveRibbon({ className }: { className?: string }) {
+export function WaveRibbon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
     <svg
       className={className}
+      style={style}
       viewBox="0 0 1600 500"
       preserveAspectRatio="xMidYMid slice"
       aria-hidden="true"

@@ -8,16 +8,6 @@ const RATE_LIMIT_KEY = "ab-guestbook-last-post";
 const NAME_MAX = 60;
 const MESSAGE_MAX = 500;
 
-interface Entry {
-  name: string;
-  message: string;
-  created_at: string;
-}
-
-function formatTimestamp(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-}
-
 function secondsUntilAllowed() {
   try {
     const last = Number(localStorage.getItem(RATE_LIMIT_KEY) || 0);
@@ -41,10 +31,8 @@ function newChallenge() {
   return { a, b, answer: a + b };
 }
 
-export function Guestbook() {
+export function GuestbookSignPanel() {
   const supabase = React.useMemo(() => getSupabaseClient(), []);
-  const [entries, setEntries] = React.useState<Entry[] | null>(null);
-  const [loadError, setLoadError] = React.useState(false);
   const [name, setName] = React.useState("");
   const [message, setMessage] = React.useState("");
   const [website, setWebsite] = React.useState(""); // honeypot
@@ -57,28 +45,6 @@ export function Guestbook() {
   }, []);
   const [status, setStatus] = React.useState<{ text: string; kind: "error" | "success" | "" }>({ text: "", kind: "" });
   const [submitting, setSubmitting] = React.useState(false);
-
-  const loadEntries = React.useCallback(async () => {
-    if (!supabase) {
-      setLoadError(true);
-      return;
-    }
-    const { data, error } = await supabase
-      .from("guestbook_entries")
-      .select("name, message, created_at")
-      .order("created_at", { ascending: false })
-      .limit(50);
-    if (error) {
-      setLoadError(true);
-      return;
-    }
-    setLoadError(false);
-    setEntries(data as Entry[]);
-  }, [supabase]);
-
-  React.useEffect(() => {
-    loadEntries();
-  }, [loadEntries]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -131,12 +97,12 @@ export function Guestbook() {
     setMessage("");
     setCaptchaValue("");
     setChallenge(newChallenge());
-    loadEntries();
   }
 
   return (
-    <div className="grid gap-14 lg:grid-cols-5">
-      <form id="form" onSubmit={handleSubmit} className="scroll-mt-[calc(var(--xmb-band-h)+16px)] space-y-4 lg:col-span-2" noValidate>
+    <div>
+      <h2 className="text-2xl font-semibold sm:text-3xl">Sign the guestbook</h2>
+      <form onSubmit={handleSubmit} className="mt-5 space-y-4" noValidate>
         <div>
           <label htmlFor="guestbook-name" className="mb-2 block text-xs uppercase tracking-widest text-white/50">
             Name
@@ -188,7 +154,7 @@ export function Guestbook() {
           <button
             type="submit"
             disabled={submitting}
-            className="rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black transition-transform hover:-translate-y-0.5 disabled:opacity-50"
+            className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-black transition-transform hover:-translate-y-0.5 disabled:opacity-50"
           >
             {submitting ? "Signing…" : "Sign the guestbook"}
           </button>
@@ -197,25 +163,6 @@ export function Guestbook() {
           {status.text}
         </p>
       </form>
-
-      <ul id="entries" className="scroll-mt-[calc(var(--xmb-band-h)+16px)] list-none lg:col-span-3">
-        {entries === null && !loadError && <p className="py-4 font-mono text-sm text-white/40">Loading entries…</p>}
-        {loadError && (
-          <p className="py-4 font-mono text-sm text-white/40">
-            {supabase ? "Couldn't load the guestbook right now. Try again later." : "Guestbook is not connected yet (missing Supabase env vars)."}
-          </p>
-        )}
-        {entries && entries.length === 0 && <p className="py-4 font-mono text-sm text-white/40">Be the first to sign the guestbook!</p>}
-        {entries?.map((entry, i) => (
-          <li key={i} className="border-b border-white/10 py-3.5 last:border-none">
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="font-semibold text-white">{entry.name}</span>
-              <time className="whitespace-nowrap font-mono text-xs text-white/40">{formatTimestamp(entry.created_at)}</time>
-            </div>
-            <p className="mt-1 break-words text-sm text-white/60">{entry.message}</p>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }

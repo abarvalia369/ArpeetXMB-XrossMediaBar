@@ -1,458 +1,391 @@
 "use client";
 
 import * as React from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import {
-  AnimatePresence,
-  animate,
-  motion,
-  useMotionValue,
-  useReducedMotion,
-  type PanInfo,
-} from "framer-motion";
-import { cn } from "@/lib/utils";
-import { NAV, type NavCategory } from "@/lib/nav-data";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { NAV, type Item } from "@/lib/nav-data";
 import { WaveRibbon } from "@/components/wave-ribbon";
+import { ExternalLinkPanel } from "@/components/panels/external-link-panel";
 
-// NAV is imported directly (not passed as a prop) because it embeds icon
-// components — functions can't cross the server/client boundary as props,
-// which breaks static generation of the (server) page components that render this.
-const categories = NAV;
+// ---- Fixed screen anchors (spec §1), derived frame-by-frame from the PS3 XMB ----
+const ROW_Y = 25.3; // vh — category row centerline
+const SELECT_Y = 45.4; // vh — selected column item centerline
+const AXIS_X = 29.5; // vw — column axis, closed
+const OPEN_AXIS_X = 15; // vw — column axis, open
+const CATEGORY_PITCH = 10.47; // vw — spacing between category icons
+const PITCH = 7.5; // vh — spacing between non-selected column items
+const SEL_GAP = 16.25; // vh — selected item to its immediate neighbour
+const ABOVE_GAP = 15.56; // vh — row centerline to first item above it
+const LABEL_OFFSET = 6; // vw — column label left edge, relative to the axis
 
-const WHEEL_THRESHOLD = 60;
-const WHEEL_COOLDOWN = 420;
+const ICON_CAT = 46;
+const ICON_CAT_ACTIVE = 64;
+const ICON_ITEM_SELECTED = 72;
+const ICON_ITEM_UNSELECTED = 30;
 
-const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
+const EASE = [0.22, 0.61, 0.36, 1] as const;
+const DURATION = 0.3;
+const WHEEL_COOLDOWN = 250;
+const WHEEL_THRESHOLD = 24;
+const DRAG_MIN_PX = 12;
 
-function findInitialState(categories: NavCategory[], pathname: string, filmParam: string | null) {
-  let categoryIndex = categories.findIndex((c) => c.href === pathname);
-  if (categoryIndex === -1) {
-    categoryIndex = categories.findIndex((c) => c.subItems.some((s) => pathname.startsWith(c.href) && c.href !== "/"));
-  }
-  if (categoryIndex === -1) categoryIndex = 0;
+// §3.1 — piecewise layout with a hole where the row sits.
+function itemY(i: number, s: number) {
+  if (i === s) return SELECT_Y;
+  if (i > s) return SELECT_Y + SEL_GAP + (i - s - 1) * PITCH;
+  const k = s - i;
+  return ROW_Y - ABOVE_GAP - (k - 1) * PITCH;
+}
 
-  const category = categories[categoryIndex];
-  let subIndex = 0;
-  let focusLevel: "top" | "sub" = "top";
-  if (filmParam) {
-    const i = category.subItems.findIndex((s) => s.id === filmParam);
-    if (i !== -1) {
-      subIndex = i;
-      focusLevel = "sub";
-    }
-  } else {
-    const i = category.subItems.findIndex((s) => s.href === pathname || s.href.split("#")[0] === pathname);
-    if (i !== -1 && pathname !== "/") {
-      subIndex = i;
-    }
-  }
-  return { categoryIndex, subIndex, focusLevel };
+// §4.1.3 — the row is gone in the open state, so the hole closes into a plain list.
+function itemYOpen(i: number, s: number) {
+  if (i === s) return SELECT_Y;
+  if (i > s) return SELECT_Y + SEL_GAP + (i - s - 1) * PITCH;
+  return SELECT_Y - SEL_GAP - (s - i - 1) * PITCH;
+}
+
+interface XmbState {
+  categoryIndex: number;
+  itemIndex: number | null;
+}
+
+function readStateFromUrl(): XmbState {
+  if (typeof window === "undefined") return { categoryIndex: 0, itemIndex: null };
+  const params = new URLSearchParams(window.location.search);
+  const found = NAV.findIndex((cat) => cat.id === params.get("c"));
+  const categoryIndex = found === -1 ? 0 : found;
+  const iSlug = params.get("i");
+  if (!iSlug) return { categoryIndex, itemIndex: null };
+  const itemIndex = NAV[categoryIndex].items.findIndex((it) => it.id === iSlug);
+  return { categoryIndex, itemIndex: itemIndex === -1 ? null : itemIndex };
+}
+
+function writeStateToUrl(state: XmbState, push: boolean) {
+  const cat = NAV[state.categoryIndex];
+  const item = state.itemIndex !== null ? cat.items[state.itemIndex] : null;
+  const params = new URLSearchParams();
+  params.set("c", cat.id);
+  if (item) params.set("i", item.id);
+  const url = `${window.location.pathname}?${params.toString()}`;
+  if (push) window.history.pushState(null, "", url);
+  else window.history.replaceState(null, "", url);
 }
 
 export function XmbMenu() {
-  // useSearchParams() opts this subtree into dynamic rendering and requires a Suspense boundary.
-  return (
-    <React.Suspense fallback={<div className="h-[var(--xmb-band-h)] w-full bg-black" />}>
-      <XmbMenuInner />
-    </React.Suspense>
-  );
-}
-
-function XmbMenuInner() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const reduced = useReducedMotion();
+  const rootRef = React.useRef<HTMLDivElement>(null);
 
-  const stageRef = React.useRef<HTMLDivElement>(null);
-  const [box, setBox] = React.useState({ w: 0, h: 0 });
-  const [dragging, setDragging] = React.useState(false);
+  const [categoryIndex, setCategoryIndex] = React.useState(0);
+  const [itemIndex, setItemIndex] = React.useState<number | null>(null);
+  const readyRef = React.useRef(false);
 
-  const initial = React.useMemo(
-    () => findInitialState(categories, pathname, searchParams.get("film")),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
-  const [categoryIndex, setCategoryIndex] = React.useState(initial.categoryIndex);
-  const [subIndex, setSubIndex] = React.useState(initial.subIndex);
-  const [focusLevel, setFocusLevel] = React.useState<"top" | "sub">(initial.focusLevel);
-
-  // Deep-linking: re-sync when the route changes from outside the menu (browser back/forward, direct nav).
-  // The menu itself lives once in the root layout and never remounts on navigation, so this effect
-  // is what keeps it in sync — not a fresh mount picking up initial state each time.
+  // Initialize from the URL on mount, then focus the root so keyboard nav works immediately.
   React.useEffect(() => {
-    const next = findInitialState(categories, pathname, searchParams.get("film"));
-    setCategoryIndex(next.categoryIndex);
-    setSubIndex(next.subIndex);
-    setFocusLevel(next.focusLevel);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, searchParams]);
-
-  React.useEffect(() => {
-    const stage = stageRef.current;
-    if (!stage) return;
-    const read = () => setBox({ w: stage.clientWidth, h: stage.clientHeight });
-    read();
-    const ro = new ResizeObserver(read);
-    ro.observe(stage);
-    return () => ro.disconnect();
+    const initial = readStateFromUrl();
+    setCategoryIndex(initial.categoryIndex);
+    setItemIndex(initial.itemIndex);
+    readyRef.current = true;
+    rootRef.current?.focus();
   }, []);
 
-  const category = categories[categoryIndex];
-  const subLast = Math.max(0, category.subItems.length - 1);
-
-  // ---- Measured geometry (ratios of the stage box, clamped to sane pixel ranges) ----
-  // One consistent band, same on every page — no separate "full-bleed hero" vs "compact bar"
-  // treatment, so the menu never visually resizes/relocates when navigating between routes.
-  const ICON = clamp(box.h * 0.14, 30, 46);
-  const STEP = clamp(box.w * 0.115, 88, 156);
-  // Sub-item rows are icon-sized (not a small badge) with a little vertical breathing room.
-  const SUB_ROW_H = ICON * 1.25;
-  const TITLE_FONT = clamp(box.w * 0.0125, 12, 15);
-  const SUB_FONT = clamp(box.w * 0.0145, 13, 17);
-  // Matches the reference frames — the icon row sits close to the top of the
-  // screen, not vertically centered.
-  const ICON_ROW_Y = box.h * 0.24;
-  const SUB_ANCHOR_Y = ICON_ROW_Y + ICON * 1.35;
-  // The focused top-level icon is always horizontally centered on the stage, so a
-  // sub-item icon of the same size, centered on that same axis, always starts here.
-  const SUB_ICON_LEFT = box.w / 2 - ICON / 2;
-  const SUB_LABEL_LEFT = box.w / 2 + ICON / 2 + 14;
-
-  const spring = reduced
-    ? { duration: 0 }
-    : { type: "spring" as const, stiffness: 260, damping: 32, mass: 0.9 };
-
-  // ---- Horizontal (category) axis ----
-  const xFor = React.useCallback(
-    (i: number) => box.w / 2 - (i * STEP + STEP / 2),
-    [box.w, STEP]
-  );
-  const x = useMotionValue(0);
-  const xTarget = xFor(categoryIndex);
-  // The stage is measured async (ResizeObserver), so box.w jumps from 0 to its real value
-  // shortly after mount. If that jump were spring-animated like a real focus change, the
-  // spring's carried-over velocity while chasing a target that itself is still moving can
-  // overshoot well past the final position. Snap instantly on the first real measurement;
-  // only spring for genuine user-driven category changes after that.
-  const hasMeasured = React.useRef(false);
+  // Shallow URL sync (spec §5): replaceState on every change, pushState only on
+  // category changes and open/close, so Back stays usable without spamming history.
+  const prevStateRef = React.useRef<XmbState>({ categoryIndex: 0, itemIndex: null });
   React.useEffect(() => {
-    if (dragging) return;
-    if (!hasMeasured.current) {
-      if (box.w === 0) return;
-      hasMeasured.current = true;
-      x.set(xTarget);
-      return;
-    }
-    const run = animate(x, xTarget, spring);
-    return () => run.stop();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [xTarget, dragging, reduced, box.w]);
+    if (!readyRef.current) return;
+    const prev = prevStateRef.current;
+    const categoryChanged = prev.categoryIndex !== categoryIndex;
+    const openChanged = (prev.itemIndex === null) !== (itemIndex === null);
+    writeStateToUrl({ categoryIndex, itemIndex }, categoryChanged || openChanged);
+    prevStateRef.current = { categoryIndex, itemIndex };
+  }, [categoryIndex, itemIndex]);
 
-  // ---- Vertical (sub-item) axis ----
-  const y = useMotionValue(0);
-  const yTarget = -subIndex * SUB_ROW_H;
-  // Same rationale as the horizontal axis above: snap on the first real measurement
-  // (matters when deep-linking straight to a non-zero sub-item), spring afterward.
-  const yHasMeasured = React.useRef(false);
   React.useEffect(() => {
-    if (!yHasMeasured.current) {
-      if (box.h === 0) return;
-      yHasMeasured.current = true;
-      y.set(yTarget);
-      return;
+    function onPopState() {
+      const state = readStateFromUrl();
+      setCategoryIndex(state.categoryIndex);
+      setItemIndex(state.itemIndex);
+      prevStateRef.current = state;
     }
-    const run = animate(y, yTarget, spring);
-    return () => run.stop();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [yTarget, reduced, category.id, box.h]);
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
-  // Single click (or arrow-key move) on a top-level icon: shift focus there immediately.
-  // This never navigates by itself — it only reveals that category's sub-item list, exactly
-  // like moving horizontal focus in the real XMB reveals the list without drilling into it.
-  const goCategory = React.useCallback(
-    (next: number) => {
-      const wrapped = ((next % categories.length) + categories.length) % categories.length;
-      setCategoryIndex(wrapped);
-      setSubIndex(0);
-      setFocusLevel("top");
+  const category = NAV[categoryIndex];
+  const items = category.items;
+  const isOpen = itemIndex !== null;
+  const s = itemIndex ?? 0;
+
+  const spring = reduced ? { duration: 0 } : { duration: DURATION, ease: EASE };
+
+  const goCategory = React.useCallback((next: number) => {
+    setCategoryIndex((cur) => {
+      const clamped = Math.max(0, Math.min(NAV.length - 1, next));
+      return clamped === cur ? cur : clamped;
+    });
+    setItemIndex(null);
+  }, []);
+
+  const moveItem = React.useCallback(
+    (delta: number) => {
+      setItemIndex((cur) => {
+        if (cur === null) {
+          return delta > 0 && items.length > 0 ? 0 : null;
+        }
+        const next = cur + delta;
+        if (next < 0) return null;
+        return Math.max(0, Math.min(items.length - 1, next));
+      });
     },
-    [categories.length]
+    [items.length]
   );
 
-  const goSub = React.useCallback(
-    (next: number) => {
-      setSubIndex(clamp(next, 0, subLast));
+  const openExternal = React.useCallback((item: Item) => {
+    if (item.kind === "external") window.open(item.url, "_blank", "noopener,noreferrer");
+  }, []);
+
+  const handleItemClick = React.useCallback(
+    (i: number) => {
+      setItemIndex(i);
+      openExternal(items[i]);
     },
-    [subLast]
+    [items, openExternal]
   );
 
-  const navigate = React.useCallback(
-    (href: string, external?: boolean) => {
-      if (external) {
-        window.open(href, "_blank", "noopener,noreferrer");
-        return;
-      }
-      router.push(href);
-    },
-    [router]
-  );
-
-  // Enter/Space (or clicking an already-focused icon): drill into its sub-item list,
-  // or navigate directly if it has no children.
-  const commitEnter = React.useCallback(() => {
-    if (focusLevel === "top") {
-      if (category.subItems.length > 0) {
-        setFocusLevel("sub");
-        setSubIndex(0);
-      } else {
-        navigate(category.href);
-      }
-      return;
-    }
-    const item = category.subItems[subIndex];
-    if (item) navigate(item.href, item.external);
-  }, [category, focusLevel, subIndex, navigate]);
-
-  // ---- Keyboard ----
+  // ---- Keyboard (spec §7) ----
   const onKeyDown = React.useCallback(
     (e: React.KeyboardEvent) => {
       switch (e.key) {
         case "ArrowLeft":
           e.preventDefault();
-          goCategory(categoryIndex - 1);
+          if (isOpen) setItemIndex(null);
+          else goCategory(categoryIndex - 1);
           break;
         case "ArrowRight":
           e.preventDefault();
           goCategory(categoryIndex + 1);
           break;
-        case "ArrowDown":
-          if (category.subItems.length === 0) return;
-          e.preventDefault();
-          if (focusLevel === "top") {
-            setFocusLevel("sub");
-            setSubIndex(0);
-          } else {
-            goSub(subIndex + 1);
-          }
-          break;
         case "ArrowUp":
-          if (category.subItems.length === 0) return;
           e.preventDefault();
-          if (focusLevel === "sub") {
-            if (subIndex === 0) setFocusLevel("top");
-            else goSub(subIndex - 1);
-          }
+          moveItem(-1);
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          moveItem(1);
           break;
         case "Enter":
-        case " ":
           e.preventDefault();
-          commitEnter();
+          if (itemIndex !== null) openExternal(items[itemIndex]);
           break;
         case "Escape":
-          if (focusLevel === "sub") {
-            e.preventDefault();
-            setFocusLevel("top");
-          }
+        case "Backspace":
+          e.preventDefault();
+          setItemIndex(null);
           break;
       }
     },
-    [category, categoryIndex, focusLevel, subIndex, goCategory, goSub, commitEnter]
+    [categoryIndex, isOpen, itemIndex, items, goCategory, moveItem, openExternal]
   );
 
-  // ---- Wheel: accumulate-then-commit, one step at a time, chains back to page scroll at the edges ----
+  // ---- Wheel: one step per gesture, 250ms debounce (spec §7) ----
   React.useEffect(() => {
-    const stage = stageRef.current;
-    if (!stage) return;
+    const root = rootRef.current;
+    if (!root) return;
     let acc = 0;
     let until = 0;
-
-    const onWheel = (e: WheelEvent) => {
+    function onWheel(e: WheelEvent) {
       const horizontalDominant = Math.abs(e.deltaX) > Math.abs(e.deltaY);
-
-      if (horizontalDominant) {
-        e.preventDefault();
-        const now = e.timeStamp;
-        if (now < until) return;
-        acc += e.deltaX;
-        if (Math.abs(acc) < WHEEL_THRESHOLD) return;
-        goCategory(categoryIndex + Math.sign(acc));
-        acc = 0;
-        until = now + WHEEL_COOLDOWN;
-        return;
-      }
-
-      // Vertical wheel only steps the sub-item list while it's actively focused;
-      // otherwise let the event fall through so the page keeps scrolling normally.
-      if (focusLevel !== "sub" || category.subItems.length === 0) return;
-      const delta = e.deltaY;
-      const atStart = delta < 0 && subIndex === 0;
-      const atEnd = delta > 0 && subIndex === subLast;
-      if (atStart || atEnd) {
-        acc = 0;
-        return;
-      }
       e.preventDefault();
       const now = e.timeStamp;
       if (now < until) return;
-      acc += delta;
-      if (Math.abs(acc) < WHEEL_THRESHOLD) return;
-      goSub(subIndex + Math.sign(acc));
+      if (horizontalDominant) {
+        acc += e.deltaX;
+        if (Math.abs(acc) < WHEEL_THRESHOLD) return;
+        goCategory(categoryIndex + Math.sign(acc));
+      } else {
+        acc += e.deltaY;
+        if (Math.abs(acc) < WHEEL_THRESHOLD) return;
+        moveItem(Math.sign(acc));
+      }
       acc = 0;
       until = now + WHEEL_COOLDOWN;
-    };
+    }
+    root.addEventListener("wheel", onWheel, { passive: false });
+    return () => root.removeEventListener("wheel", onWheel);
+  }, [categoryIndex, goCategory, moveItem]);
 
-    stage.addEventListener("wheel", onWheel, { passive: false });
-    return () => stage.removeEventListener("wheel", onWheel);
-  }, [categoryIndex, focusLevel, subIndex, subLast, category.subItems.length, goCategory, goSub]);
+  // ---- Drag: horizontal → category, vertical → item, snap on release (spec §7) ----
+  const dragStart = React.useRef<{ x: number; y: number } | null>(null);
+  const onPointerDown = React.useCallback((e: React.PointerEvent) => {
+    dragStart.current = { x: e.clientX, y: e.clientY };
+  }, []);
+  const onPointerUp = React.useCallback(
+    (e: React.PointerEvent) => {
+      const start = dragStart.current;
+      dragStart.current = null;
+      if (!start) return;
+      const dx = e.clientX - start.x;
+      const dy = e.clientY - start.y;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < DRAG_MIN_PX) return;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        const pxPerStep = (window.innerWidth * CATEGORY_PITCH) / 100;
+        const steps = Math.round(-dx / pxPerStep);
+        if (steps !== 0) goCategory(categoryIndex + steps);
+      } else {
+        const pxPerStep = (window.innerHeight * PITCH) / 100;
+        const steps = Math.round(-dy / pxPerStep);
+        if (steps !== 0) moveItem(steps);
+      }
+    },
+    [categoryIndex, goCategory, moveItem]
+  );
 
-  // ---- Drag-to-scrub horizontally, velocity-aware snap on release ----
-  const onDragEnd = (_: unknown, info: PanInfo) => {
-    const current = x.get();
-    const projected = current + info.velocity.x * 0.12;
-    const rawIndex = (box.w / 2 - STEP / 2 - projected) / STEP;
-    goCategory(Math.round(rawIndex));
-    setDragging(false);
-  };
+  const rowTranslateX = AXIS_X - categoryIndex * CATEGORY_PITCH;
+  const columnAxisX = isOpen ? OPEN_AXIS_X : AXIS_X;
+  const activeItem = items[s] as Item | undefined;
 
   return (
-    <nav
-      ref={stageRef}
-      role="navigation"
+    <div
+      ref={rootRef}
+      role="application"
       aria-label="Main menu"
       tabIndex={0}
       onKeyDown={onKeyDown}
-      className="sticky top-0 z-50 h-[var(--xmb-band-h)] w-full select-none overflow-hidden bg-black outline-none"
+      onPointerDown={onPointerDown}
+      onPointerUp={onPointerUp}
+      className="fixed inset-0 overflow-hidden bg-black text-white outline-none"
     >
-      <WaveRibbon className="pointer-events-none absolute left-0 top-1/2 h-[55%] w-full -translate-y-1/2 opacity-90" />
+      <WaveRibbon
+        className="pointer-events-none absolute left-0 w-full opacity-90"
+        style={{ top: `${ROW_Y}vh`, height: "42vh", transform: "translateY(-50%)" }}
+      />
 
-      {/* Icon row */}
+      {/* Category row — z-index 1, hides completely when open (spec §4.1.1) */}
       <motion.div
-        drag="x"
-        dragMomentum={false}
-        dragElastic={0.08}
-        onDragStart={() => setDragging(true)}
-        onDragEnd={onDragEnd}
-        style={{ x, top: ICON_ROW_Y }}
-        className="absolute left-0 flex cursor-grab items-start active:cursor-grabbing"
+        className="absolute left-0 z-10 w-full"
+        style={{ top: `${ROW_Y}vh` }}
+        animate={{ opacity: isOpen ? 0 : 1, y: isOpen ? -60 : 0 }}
+        transition={spring}
       >
-        {categories.map((cat, i) => {
-          const focused = i === categoryIndex;
-          const Icon = cat.icon;
-          return (
-            <button
-              key={cat.id}
-              type="button"
-              tabIndex={-1}
-              aria-current={focused ? "page" : undefined}
-              aria-label={cat.label}
-              onClick={() => {
-                stageRef.current?.focus();
-                // A single click always shifts focus immediately, whether or not this
-                // icon was already focused. Clicking the already-focused icon additionally
-                // drills into its sub-item list (or navigates, for a leaf category).
-                if (focused) {
-                  commitEnter();
-                } else {
-                  goCategory(i);
-                }
-              }}
-              style={{ width: STEP }}
-              className="flex flex-col items-center gap-2 bg-transparent outline-none"
-            >
-              <motion.span
-                animate={{
-                  scale: focused ? 1.55 : 1,
-                  opacity: focused ? 1 : 0.42,
-                }}
-                transition={spring}
-                style={{ width: ICON, height: ICON }}
-                className="flex items-center justify-center text-white"
+        <motion.div className="relative h-0" animate={{ x: `${rowTranslateX}vw` }} transition={spring}>
+          {NAV.map((cat, i) => {
+            const active = i === categoryIndex;
+            const Icon = cat.icon;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                tabIndex={-1}
+                aria-current={active ? "true" : undefined}
+                aria-label={cat.label}
+                onClick={() => goCategory(i)}
+                style={{ left: `${i * CATEGORY_PITCH}vw` }}
+                className="absolute top-0 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center bg-transparent outline-none"
               >
-                <Icon width="100%" height="100%" />
-              </motion.span>
-              <span
-                style={{ fontSize: TITLE_FONT, minHeight: TITLE_FONT * 1.4 }}
-                className={cn(
-                  "tracking-wide transition-opacity duration-200",
-                  focused ? "font-semibold text-white opacity-100" : "opacity-0"
-                )}
-              >
-                {cat.label}
-              </span>
-            </button>
-          );
-        })}
+                <motion.span
+                  animate={{
+                    width: active ? ICON_CAT_ACTIVE : ICON_CAT,
+                    height: active ? ICON_CAT_ACTIVE : ICON_CAT,
+                    opacity: active ? 1 : 0.55,
+                  }}
+                  transition={spring}
+                  className="flex items-center justify-center"
+                  style={active ? { filter: "drop-shadow(0 0 10px rgba(255,255,255,0.55))" } : undefined}
+                >
+                  <Icon width="100%" height="100%" />
+                </motion.span>
+                <span
+                  className="absolute top-full mt-[9px] whitespace-nowrap text-[11px] uppercase tracking-[0.08em]"
+                  style={{ opacity: active ? 1 : 0.5, fontWeight: active ? 700 : 400 }}
+                >
+                  {cat.label}
+                </span>
+              </button>
+            );
+          })}
+        </motion.div>
       </motion.div>
 
-      {/* Sub-item list — always rendered inline, directly under the focused icon */}
-      <AnimatePresence mode="wait">
-        {category.subItems.length > 0 && (
+      {/* Column — z-index 2, ABOVE the row (spec §3.2 "z-order").
+          No `mode="wait"`: the outgoing and incoming columns are meant to briefly
+          overlap near the axis during a category change (spec §2, step 2). */}
+      <AnimatePresence>
+        <motion.div
+          key={category.id}
+          className="absolute top-0 z-20 h-full"
+          initial={reduced ? false : { opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0, left: `${columnAxisX}vw` }}
+          exit={reduced ? undefined : { opacity: 0, x: 20 }}
+          transition={spring}
+        >
+          {items.map((item, i) => {
+            // `s` (defaulted to 0) is only a layout anchor for itemY — visual emphasis
+            // must key off the real itemIndex, or item 0 looks selected while closed.
+            const selected = isOpen && i === itemIndex;
+            const y = isOpen ? itemYOpen(i, s) : itemY(i, s);
+            const Icon = item.icon;
+            return (
+              <motion.div
+                key={item.id}
+                className="absolute left-0"
+                animate={{
+                  top: `${y}vh`,
+                  scale: selected ? 1 : ICON_ITEM_UNSELECTED / ICON_ITEM_SELECTED,
+                  opacity: selected ? 1 : i < s ? 0.45 : 0.6,
+                }}
+                transition={spring}
+              >
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => handleItemClick(i)}
+                  style={{ width: ICON_ITEM_SELECTED, height: ICON_ITEM_SELECTED, transform: "translate(-50%, -50%)" }}
+                  className="absolute left-0 top-0 flex items-center justify-center bg-transparent outline-none"
+                >
+                  <Icon width="100%" height="100%" />
+                </button>
+                <span
+                  style={{
+                    left: `${LABEL_OFFSET}vw`,
+                    transform: "translateY(-50%)",
+                    fontSize: selected ? 21 : 17,
+                    fontWeight: selected ? 700 : 400,
+                    textShadow: selected ? "0 0 14px rgba(255,255,255,0.6)" : undefined,
+                  }}
+                  className="absolute top-0 whitespace-nowrap"
+                >
+                  {item.label}
+                </span>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Content panel — highlight-triggered, right side, no navigation (spec §4).
+          Cross-fades (old out, new in, overlapping), not sequential — spec §4.2. */}
+      <AnimatePresence>
+        {isOpen && activeItem && (
           <motion.div
-            key={category.id}
-            initial={reduced ? false : { opacity: 0 }}
-            animate={{ opacity: 1 }}
+            key={`${category.id}:${activeItem.id}`}
+            className="absolute overflow-y-auto"
+            style={{ left: "38vw", right: "12vw", top: "36.8vh", bottom: "4vh" }}
+            initial={reduced ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
             exit={reduced ? undefined : { opacity: 0 }}
-            transition={{ duration: reduced ? 0 : 0.18 }}
-            style={{ top: SUB_ANCHOR_Y, left: 0 }}
-            className="absolute w-full"
+            transition={{ duration: reduced ? 0 : 0.2 }}
           >
-            <motion.ul style={{ y }} transition={spring} className="relative">
-              {category.subItems.map((item, i) => {
-                const focused = focusLevel === "sub" && i === subIndex;
-                return (
-                  <motion.li
-                    key={item.id}
-                    initial={reduced ? false : { opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ ...spring, delay: reduced ? 0 : i * 0.02 }}
-                    style={{ height: SUB_ROW_H }}
-                    className="relative"
-                  >
-                    {/* Same size as the top-level icon, centered on that same column. */}
-                    <span
-                      style={{
-                        width: ICON,
-                        height: ICON,
-                        left: SUB_ICON_LEFT,
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                      }}
-                      className={cn("absolute flex items-center justify-center", focused ? "text-white" : "text-white/40")}
-                    >
-                      <item.icon width="100%" height="100%" />
-                    </span>
-                    <button
-                      type="button"
-                      tabIndex={-1}
-                      onClick={() => {
-                        stageRef.current?.focus();
-                        setFocusLevel("sub");
-                        setSubIndex(i);
-                        navigate(item.href, item.external);
-                      }}
-                      style={{
-                        fontSize: SUB_FONT,
-                        left: SUB_LABEL_LEFT,
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                      }}
-                      className={cn(
-                        "absolute whitespace-nowrap bg-transparent text-left tracking-wide outline-none transition-all duration-150",
-                        focused
-                          ? "font-semibold text-white [text-shadow:0_0_18px_rgba(255,255,255,0.75)]"
-                          : "text-white/45 hover:text-white/70"
-                      )}
-                    >
-                      {item.label}
-                    </button>
-                  </motion.li>
-                );
-              })}
-            </motion.ul>
+            <PanelBody item={activeItem} />
           </motion.div>
         )}
       </AnimatePresence>
-    </nav>
+    </div>
   );
+}
+
+function PanelBody({ item }: { item: Item }) {
+  if (item.kind === "external") {
+    return <ExternalLinkPanel label={item.label} url={item.url} avatarText={item.avatarText} />;
+  }
+  const Panel = item.Panel;
+  return <Panel />;
 }

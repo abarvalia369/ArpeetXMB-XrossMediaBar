@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import {
   HomeIcon,
   AboutIcon,
@@ -16,23 +17,39 @@ import {
   ListIcon,
   type Ps3Icon,
 } from "@/components/icons/ps3-icons";
+import { HomeBioPanel } from "@/components/panels/home-bio";
+import { BioPanel, ExperiencePanel, EducationPanel, SkillsPanel } from "@/components/panels/about-panels";
+import { makeFilmPanel } from "@/components/panels/film-panel";
+import { ContactMessagePanel } from "@/components/panels/contact-message";
+import { GuestbookSignPanel } from "@/components/panels/guestbook-sign";
+import { GuestbookEntriesPanel } from "@/components/panels/guestbook-entries";
 import { FILMS } from "@/lib/videos-data";
 
-export interface SubItem {
+export interface ContentItem {
+  kind: "content";
   id: string;
   label: string;
-  href: string;
   icon: Ps3Icon;
-  /** True when the link leaves the app (opens in a new tab). */
-  external?: boolean;
+  Panel: ComponentType;
 }
+
+export interface ExternalItem {
+  kind: "external";
+  id: string;
+  label: string;
+  icon: Ps3Icon;
+  url: string;
+  /** Short text shown on the placeholder avatar (e.g. "GH", "IG"). */
+  avatarText: string;
+}
+
+export type Item = ContentItem | ExternalItem;
 
 export interface NavCategory {
   id: string;
   label: string;
   icon: Ps3Icon;
-  href: string;
-  subItems: SubItem[];
+  items: Item[];
 }
 
 export const NAV: NavCategory[] = [
@@ -40,46 +57,44 @@ export const NAV: NavCategory[] = [
     id: "home",
     label: "Home",
     icon: HomeIcon,
-    href: "/",
-    subItems: [],
+    items: [{ kind: "content", id: "profile", label: "Profile", icon: HomeIcon, Panel: HomeBioPanel }],
   },
   {
     id: "about",
     label: "About",
     icon: AboutIcon,
-    href: "/about",
-    subItems: [
-      { id: "bio", label: "Bio", href: "/about#bio", icon: DiscIcon },
-      { id: "experience", label: "Experience", href: "/about#experience", icon: FolderIcon },
-      { id: "education", label: "Education", href: "/about#education", icon: CubeIcon },
-      { id: "skills", label: "Skills", href: "/about#skills", icon: BarsIcon },
+    items: [
+      { kind: "content", id: "bio", label: "Bio", icon: DiscIcon, Panel: BioPanel },
+      { kind: "content", id: "experience", label: "Experience", icon: FolderIcon, Panel: ExperiencePanel },
+      { kind: "content", id: "education", label: "Education", icon: CubeIcon, Panel: EducationPanel },
+      { kind: "content", id: "skills", label: "Skills", icon: BarsIcon, Panel: SkillsPanel },
     ],
   },
   {
     id: "films",
     label: "Films",
     icon: FilmsIcon,
-    href: "/work",
-    subItems: FILMS.map((f) => ({
+    items: FILMS.map((f) => ({
+      kind: "content" as const,
       id: f.id,
       label: f.title,
-      href: `/work?film=${f.id}`,
       icon: PlayIcon,
+      Panel: makeFilmPanel(f),
     })),
   },
   {
     id: "spotify",
     label: "Spotify",
     icon: SpotifyIcon,
-    href: "/",
-    subItems: [
+    items: [
       {
+        kind: "external",
         id: "open",
         label: "Open Spotify profile",
-        // PLACEHOLDER — replace with your real Spotify profile/playlist URL.
-        href: "https://open.spotify.com",
         icon: PlayIcon,
-        external: true,
+        // PLACEHOLDER — replace with your real Spotify profile/playlist URL.
+        url: "https://open.spotify.com",
+        avatarText: "SP",
       },
     ],
   },
@@ -87,22 +102,34 @@ export const NAV: NavCategory[] = [
     id: "contact",
     label: "Contact",
     icon: ContactIcon,
-    href: "/contact",
-    subItems: [
-      { id: "message", label: "Send a message", href: "/contact#form", icon: SendIcon },
-      { id: "github", label: "GitHub", href: "https://github.com/abarvalia369", icon: GlobeIcon, external: true },
-      { id: "linkedin", label: "LinkedIn", href: "https://www.linkedin.com/in/arpeet-barvalia/", icon: GlobeIcon, external: true },
-      { id: "instagram", label: "Instagram", href: "https://www.instagram.com/arpeetbarvalia/", icon: GlobeIcon, external: true },
+    items: [
+      { kind: "content", id: "message", label: "Send a message", icon: SendIcon, Panel: ContactMessagePanel },
+      { kind: "external", id: "github", label: "GitHub", icon: GlobeIcon, url: "https://github.com/abarvalia369", avatarText: "GH" },
+      {
+        kind: "external",
+        id: "linkedin",
+        label: "LinkedIn",
+        icon: GlobeIcon,
+        url: "https://www.linkedin.com/in/arpeet-barvalia/",
+        avatarText: "IN",
+      },
+      {
+        kind: "external",
+        id: "instagram",
+        label: "Instagram",
+        icon: GlobeIcon,
+        url: "https://www.instagram.com/arpeetbarvalia/",
+        avatarText: "IG",
+      },
     ],
   },
   {
     id: "guestbook",
     label: "Guestbook",
     icon: GuestbookIcon,
-    href: "/guestbook",
-    subItems: [
-      { id: "sign", label: "Sign the guestbook", href: "/guestbook#form", icon: ChatIcon },
-      { id: "entries", label: "View entries", href: "/guestbook#entries", icon: ListIcon },
+    items: [
+      { kind: "content", id: "sign", label: "Sign the guestbook", icon: ChatIcon, Panel: GuestbookSignPanel },
+      { kind: "content", id: "entries", label: "View entries", icon: ListIcon, Panel: GuestbookEntriesPanel },
     ],
   },
 ];
