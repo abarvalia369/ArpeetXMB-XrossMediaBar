@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#12151A"/>
+  <circle cx="1000" cy="120" r="120" fill="none" stroke="#D98A3D" stroke-width="2" opacity="0.5"/>
+  <circle cx="1000" cy="120" r="70" fill="none" stroke="#4FB6A8" stroke-width="2" opacity="0.5"/>
+  <text x="80" y="300" font-family="Georgia, 'Times New Roman', serif" font-size="76" fill="#F4EFE4">Arpeet Barvalia</text>
+  <text x="80" y="360" font-family="Menlo, Consolas, monospace" font-size="28" letter-spacing="2" fill="#D98A3D">ENGINEER — FILMMAKER — REEL 01</text>
+  <text x="80" y="420" font-family="Georgia, serif" font-size="24" fill="#9AA0A8">Data systems by day. Short films by night.</text>
+</svg>

@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 95%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 58%;
+    --accent: 0 0% 100%;
+    --accent-foreground: 0 0% 0%;
+    --border: 0 0% 20%;
+    --radius: 0.75rem;
+    /* One fixed height for the persistent XMB menu band — same on every page, so
+       navigating never causes it to resize/relocate (see components/ui/xmb-menu.tsx). */
+    --xmb-band-h: clamp(360px, 46vh, 520px);
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  ::selection {
+    background: rgba(255, 255, 255, 0.85);
+    color: #000;
+  }
+
+  :focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.7);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  background: #fff;
+  color: #000;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.85rem;
+  border-radius: 0 0 6px 0;
+}
+.skip-link:focus {
+  left: 0;
+}
+
+@keyframes wave-drift {
+  0%, 100% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(-2%) translateY(1%); }
+}
+@keyframes wave-drift-rev {
+  0%, 100% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(2.5%) translateY(-1.2%); }
+}
+@keyframes wave-drift-slow {
+  0%, 100% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(-1.2%) translateY(-0.8%); }
+}
+.wave-drift { animation: wave-drift 22s ease-in-out infinite; transform-origin: center; }
+.wave-drift-rev { animation: wave-drift-rev 26s ease-in-out infinite; transform-origin: center; }
+.wave-drift-slow { animation: wave-drift-slow 34s ease-in-out infinite; transform-origin: center; }
