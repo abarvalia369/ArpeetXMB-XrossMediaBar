@@ -5,3 +5,5 @@ out/
 .env.local
 temporary screenshots/
 .DS_Store
+resume_swe.docx
+tsconfig.tsbuildinfo
