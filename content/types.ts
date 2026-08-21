@@ -144,10 +144,8 @@ export interface Film {
   id: string;
   title: string;
   description: string;
-  poster: string;
-  src: string;
-  duration: string;
-  placeholder?: boolean;
+  /** YouTube video id (the part after youtu.be/ or /shorts/) — embedded inline, no redirect. */
+  youtubeId: string;
 }
 
 // ---- Contact ----
@@ -236,7 +234,6 @@ export interface ExternalLinkPanelContent {
 export interface MiscContent {
   notFound: NotFoundContent;
   externalLink: ExternalLinkPanelContent;
-  filmLoadError: string;
   mainMenuAriaLabel: string;
   closeCategoryAriaLabel: (categoryLabel: string) => string;
 }

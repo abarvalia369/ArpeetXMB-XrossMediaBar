@@ -11,7 +11,6 @@ export const MISC: MiscContent = {
     opensInNewTab: "This opens in a new tab.",
     openLabel: (label) => `Open ${label} ↗`,
   },
-  filmLoadError: "This video couldn't be loaded (placeholder file — add a real .mp4 to /public/videos).",
   mainMenuAriaLabel: "Main menu",
   closeCategoryAriaLabel: (categoryLabel) => `Close ${categoryLabel}`,
 };
