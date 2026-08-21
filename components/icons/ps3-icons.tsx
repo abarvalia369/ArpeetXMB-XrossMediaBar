@@ -97,3 +97,66 @@ export const ListIcon: Ps3Icon = (props) => (
     <rect x="4" y="16" width="16" height="2.1" rx="1" />
   </svg>
 );
+
+export const GitHubIcon: Ps3Icon = (props) => (
+  <svg {...base(props)}>
+    <path d="M12 2.5a9.5 9.5 0 0 0-3 18.52c.48.09.65-.21.65-.46v-1.7c-2.64.57-3.2-1.14-3.2-1.14-.43-1.1-1.06-1.39-1.06-1.39-.86-.6.07-.58.07-.58.96.07 1.46.99 1.46.99.85 1.46 2.23 1.04 2.77.8.09-.62.33-1.04.6-1.28-2.11-.24-4.33-1.06-4.33-4.72 0-1.04.37-1.9.98-2.56-.1-.24-.43-1.22.09-2.54 0 0 .8-.26 2.62.98a9.05 9.05 0 0 1 4.78 0c1.82-1.24 2.62-.98 2.62-.98.52 1.32.19 2.3.1 2.54.6.66.98 1.52.98 2.56 0 3.67-2.23 4.48-4.35 4.71.34.3.65.87.65 1.76v2.6c0 .25.17.55.66.46A9.5 9.5 0 0 0 12 2.5Z" />
+  </svg>
+);
+
+export const LinkedInIcon: Ps3Icon = (props) => (
+  <svg {...base(props)}>
+    <rect x="3" y="3" width="18" height="18" rx="2.5" />
+    <rect x="6.2" y="9.6" width="2.7" height="8.4" fill="black" />
+    <circle cx="7.55" cy="6.4" r="1.55" fill="black" />
+    <path
+      d="M11.4 9.6h2.6v1.15c.5-.75 1.35-1.35 2.65-1.35 2 0 3.35 1.32 3.35 4.02V18h-2.7v-4.2c0-1.15-.45-1.93-1.5-1.93-.82 0-1.3.55-1.51 1.08-.08.19-.09.46-.09.73V18h-2.7c0-.03.03-7.5 0-8.4Z"
+      fill="black"
+    />
+  </svg>
+);
+
+export const InstagramIcon: Ps3Icon = (props) => (
+  <svg {...base(props)}>
+    <rect x="3" y="3" width="18" height="18" rx="5" />
+    <circle cx="12" cy="12" r="4.2" fill="black" />
+    <circle cx="12" cy="12" r="2.5" />
+    <circle cx="17.15" cy="6.85" r="1.15" fill="black" />
+  </svg>
+);
+
+export const SpotifyGlyphIcon: Ps3Icon = (props) => (
+  <svg {...base(props)}>
+    <circle cx="12" cy="12" r="9.5" />
+    <path
+      d="M6.9 9.9c3.2-.95 6.9-.75 9.6.85"
+      stroke="black"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      fill="none"
+    />
+    <path
+      d="M7.3 12.85c2.65-.75 5.7-.6 8 .75"
+      stroke="black"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      fill="none"
+    />
+    <path
+      d="M7.7 15.6c2.2-.55 4.7-.45 6.6.68"
+      stroke="black"
+      strokeWidth="1.15"
+      strokeLinecap="round"
+      fill="none"
+    />
+  </svg>
+);
+
+export const SoundCloudIcon: Ps3Icon = (props) => (
+  <svg {...base(props)}>
+    <rect x="4" y="12.5" width="1.6" height="5.5" rx="0.8" />
+    <rect x="6.4" y="10.5" width="1.6" height="7.5" rx="0.8" />
+    <rect x="8.8" y="8.8" width="1.6" height="9.2" rx="0.8" />
+    <path d="M11.2 18h6.4a3 3 0 0 0 .35-5.98A4.4 4.4 0 0 0 13.6 8.6c-.5 0-.97.09-1.4.25a.6.6 0 0 0-.4.57V17.4a.6.6 0 0 0 .6.6Z" />
+  </svg>
+);

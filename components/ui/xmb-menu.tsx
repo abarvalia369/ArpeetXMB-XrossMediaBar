@@ -135,15 +135,12 @@ export function XmbMenu() {
     [reduced]
   );
 
-  const openExternal = React.useCallback((item: Item) => {
-    if (item.kind === "external") window.open(item.url, "_blank", "noopener,noreferrer");
-  }, []);
-
   // Enter, or clicking the already-selected item (spec §4.2 preamble).
+  // Always opens the content panel — external items navigate only when the
+  // user explicitly activates the link shown inside that panel.
   const openSelected = React.useCallback(() => {
     setIsOpen(true);
-    openExternal(items[itemIndex]);
-  }, [items, itemIndex, openExternal]);
+  }, []);
 
   const handleCategoryClick = React.useCallback(
     (i: number) => {
@@ -160,12 +157,11 @@ export function XmbMenu() {
     (i: number) => {
       if (i === itemIndex) {
         setIsOpen(true);
-        openExternal(items[i]);
       } else {
         setItemIndex(i);
       }
     },
-    [itemIndex, items, openExternal]
+    [itemIndex]
   );
 
   // ---- Keyboard (spec §7, §4.4) ----
