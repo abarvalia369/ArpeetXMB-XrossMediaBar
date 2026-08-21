@@ -282,9 +282,13 @@ export function XmbMenu() {
       <WavyBackground
         containerClassName="absolute inset-0 pointer-events-none"
         speed="slow"
-        blur={12}
-        waveWidth={40}
-        waveOpacity={0.35}
+        blur={0}
+        glow
+        glowColor="#ffffff"
+        glowStrength={16}
+        waveCount={2}
+        waveWidth={1.5}
+        waveOpacity={0.5}
       />
 
       {/* Category row — z-index 1. In BROWSE, fully visible (spec §4.1). In OPEN, every

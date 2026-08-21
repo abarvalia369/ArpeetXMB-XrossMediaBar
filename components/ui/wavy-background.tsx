@@ -9,8 +9,12 @@ export const WavyBackground = ({
   containerClassName,
   colors,
   waveWidth,
+  waveCount = 5,
   backgroundFill,
   blur = 10,
+  glow = false,
+  glowColor = "#ffffff",
+  glowStrength = 14,
   speed = "fast",
   waveOpacity = 0.5,
   ...props
@@ -20,8 +24,16 @@ export const WavyBackground = ({
   containerClassName?: string;
   colors?: string[];
   waveWidth?: number;
+  /** How many overlapping wave lines to draw. */
+  waveCount?: number;
   backgroundFill?: string;
+  /** Softens the whole canvas (the old "fuzzy" look). Set to 0 for a crisp line. */
   blur?: number;
+  /** Adds a light halo around each line via canvas shadow, independent of `blur` —
+   * this is what gets a sharp line with a glow, rather than a blurred blob. */
+  glow?: boolean;
+  glowColor?: string;
+  glowStrength?: number;
   speed?: "slow" | "fast";
   waveOpacity?: number;
   [key: string]: any;
@@ -51,12 +63,12 @@ export const WavyBackground = ({
     ctx = canvas.getContext("2d");
     w = ctx.canvas.width = window.innerWidth;
     h = ctx.canvas.height = window.innerHeight;
-    ctx.filter = `blur(${blur}px)`;
+    ctx.filter = blur > 0 ? `blur(${blur}px)` : "none";
     nt = 0;
     window.onresize = function () {
       w = ctx.canvas.width = window.innerWidth;
       h = ctx.canvas.height = window.innerHeight;
-      ctx.filter = `blur(${blur}px)`;
+      ctx.filter = blur > 0 ? `blur(${blur}px)` : "none";
     };
     render();
   };
@@ -76,6 +88,12 @@ export const WavyBackground = ({
       ctx.beginPath();
       ctx.lineWidth = waveWidth || 50;
       ctx.strokeStyle = waveColors[i % waveColors.length];
+      if (glow) {
+        ctx.shadowBlur = glowStrength;
+        ctx.shadowColor = glowColor;
+      } else {
+        ctx.shadowBlur = 0;
+      }
       for (x = 0; x < w; x += 5) {
         var y = noise(x / 800, 0.3 * i, nt) * 100;
         ctx.lineTo(x, y + h * 0.5); // adjust for height, currently at 50% of the container
@@ -83,6 +101,7 @@ export const WavyBackground = ({
       ctx.stroke();
       ctx.closePath();
     }
+    ctx.shadowBlur = 0; // don't let the glow bleed into next frame's background fill
   };
 
   let animationId: number;
@@ -90,7 +109,7 @@ export const WavyBackground = ({
     ctx.fillStyle = backgroundFill || "black";
     ctx.globalAlpha = waveOpacity || 0.5;
     ctx.fillRect(0, 0, w, h);
-    drawWave(5);
+    drawWave(waveCount);
     animationId = requestAnimationFrame(render);
   };
 
@@ -124,7 +143,7 @@ export const WavyBackground = ({
         ref={canvasRef}
         id="canvas"
         style={{
-          ...(isSafari ? { filter: `blur(${blur}px)` } : {}),
+          ...(isSafari && blur > 0 ? { filter: `blur(${blur}px)` } : {}),
         }}
       ></canvas>
       <div className={cn("relative z-10", className)} {...props}>
