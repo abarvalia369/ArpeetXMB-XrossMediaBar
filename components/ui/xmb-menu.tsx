@@ -285,10 +285,10 @@ export function XmbMenu() {
         blur={0}
         glow
         glowColor="#ffffff"
-        glowStrength={16}
-        waveCount={2}
-        waveWidth={1.5}
-        waveOpacity={0.5}
+        glowStrength={36}
+        waveCount={4}
+        waveWidth={2}
+        waveOpacity={0.65}
       />
 
       {/* Category row — z-index 1. In BROWSE, fully visible (spec §4.1). In OPEN, every
