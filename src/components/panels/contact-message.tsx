@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { getSupabaseClient } from "@/lib/supabase";
+import { getSupabaseClient } from "@/src/lib/supabase";
+import { CONTACT } from "@/content";
 
 const MESSAGE_MAX = 2000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -17,10 +18,10 @@ export function ContactMessagePanel() {
 
   function validate() {
     const next: typeof errors = {};
-    if (!name.trim()) next.name = "Please enter your name.";
-    if (!email.trim() || !EMAIL_RE.test(email.trim())) next.email = "Please enter a valid email address.";
-    if (!message.trim()) next.message = "Please enter a message.";
-    else if (message.trim().length > MESSAGE_MAX) next.message = `Message must be ${MESSAGE_MAX} characters or fewer.`;
+    if (!name.trim()) next.name = CONTACT.messages.nameRequired;
+    if (!email.trim() || !EMAIL_RE.test(email.trim())) next.email = CONTACT.messages.emailInvalid;
+    if (!message.trim()) next.message = CONTACT.messages.messageRequired;
+    else if (message.trim().length > MESSAGE_MAX) next.message = CONTACT.messages.messageTooLong(MESSAGE_MAX);
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -30,11 +31,11 @@ export function ContactMessagePanel() {
     setStatus({ text: "", kind: "" });
 
     if (!validate()) {
-      setStatus({ text: "Please fix the highlighted fields.", kind: "error" });
+      setStatus({ text: CONTACT.messages.fixFields, kind: "error" });
       return;
     }
     if (!supabase) {
-      setStatus({ text: "Contact form is not connected yet (missing Supabase env vars). Email me directly instead.", kind: "error" });
+      setStatus({ text: CONTACT.messages.notConnected, kind: "error" });
       return;
     }
 
@@ -43,11 +44,11 @@ export function ContactMessagePanel() {
     setSubmitting(false);
 
     if (error) {
-      setStatus({ text: "Couldn't send right now — please try again, or email me directly instead.", kind: "error" });
+      setStatus({ text: CONTACT.messages.sendFailed, kind: "error" });
       return;
     }
 
-    setStatus({ text: "Message sent — thanks for reaching out! I'll reply by email.", kind: "success" });
+    setStatus({ text: CONTACT.messages.sendSuccess, kind: "success" });
     setName("");
     setEmail("");
     setMessage("");
@@ -56,9 +57,9 @@ export function ContactMessagePanel() {
 
   return (
     <div>
-      <h2 className="text-2xl font-semibold sm:text-3xl">Send a message</h2>
+      <h2 className="text-2xl font-semibold sm:text-3xl">{CONTACT.heading}</h2>
       <form onSubmit={handleSubmit} className="mt-5 space-y-4" noValidate>
-        <Field id="contact-name" label="Name" error={errors.name}>
+        <Field id="contact-name" label={CONTACT.fields.name.label} error={errors.name}>
           <input
             id="contact-name"
             value={name}
@@ -69,7 +70,7 @@ export function ContactMessagePanel() {
             className="w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white focus:border-white/50"
           />
         </Field>
-        <Field id="contact-email" label="Email" error={errors.email}>
+        <Field id="contact-email" label={CONTACT.fields.email.label} error={errors.email}>
           <input
             id="contact-email"
             type="email"
@@ -81,7 +82,7 @@ export function ContactMessagePanel() {
             className="w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white focus:border-white/50"
           />
         </Field>
-        <Field id="contact-message" label="Message" error={errors.message}>
+        <Field id="contact-message" label={CONTACT.fields.message.label} error={errors.message}>
           <textarea
             id="contact-message"
             value={message}
@@ -99,7 +100,7 @@ export function ContactMessagePanel() {
             disabled={submitting}
             className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-black transition-transform hover:-translate-y-0.5 disabled:opacity-50"
           >
-            {submitting ? "Sending…" : "Send message"}
+            {submitting ? CONTACT.submittingLabel : CONTACT.submitLabel}
           </button>
           <p role="status" aria-live="polite" className={status.kind === "error" ? "text-sm text-red-400" : "text-sm text-white/70"}>
             {status.text}

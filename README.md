@@ -112,32 +112,22 @@ above.
 
 ## Adding a video
 
-1. **Compress the source file.** Target H.264 in an MP4 container, 1080p max (720p is fine for
-   most short films on the web), and aim for roughly 5–8 Mbps for 1080p or 2.5–4 Mbps for 720p
-   — that keeps a 3-minute film under ~150MB. Example with ffmpeg:
-   ```
-   ffmpeg -i source.mov -vf scale=-2:1080 -c:v libx264 -preset slow -crf 22 \
-     -c:a aac -b:a 160k -movflags +faststart public/videos/my-film.mp4
-   ```
-   `-movflags +faststart` matters — it lets the browser start playback before the whole file
-   downloads.
-2. **Generate a poster frame** (a representative still, ~1600×900 or 16:9 at your target width):
-   ```
-   ffmpeg -i public/videos/my-film.mp4 -ss 00:00:03 -vframes 1 public/images/my-film-poster.jpg
-   ```
-3. **Add the entry** to `lib/videos-data.ts`:
+Films are YouTube videos embedded inline (via `youtube-nocookie.com/embed/...`) — playback
+never leaves the site. To add one:
+
+1. Upload the film to YouTube (public or unlisted both work for embedding).
+2. Take its id — the part of the URL after `youtu.be/` or `youtube.com/shorts/`
+   (e.g. `https://youtu.be/dQw4w9WgXcQ` → `dQw4w9WgXcQ`).
+3. Add an entry to `content/films.ts`:
    ```ts
    {
      id: "my-film",
      title: "My Film",
      description: "One or two sentences about it.",
-     poster: "/images/my-film-poster.jpg",
-     src: "/videos/my-film.mp4",
-     duration: "03:42",
+     youtubeId: "dQw4w9WgXcQ",
    }
    ```
-   Remove the `placeholder: true` entries once you have real films to show. The XMB menu's
-   Films sub-items are generated from this file automatically.
+   The XMB menu's Films sub-items are generated from this file automatically.
 
 ## Deploying
 
