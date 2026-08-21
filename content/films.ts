@@ -6,19 +6,19 @@ import type { Film } from "./types";
 export const FILMS: Film[] = [
   {
     id: "film-01",
-    title: "SPAINDIA",
+    title: "Spain",
     description: "[One or two sentences describing this short film — placeholder copy.]",
     youtubeId: "i1W16Rf3bZI",
   },
   {
     id: "film-02",
-    title: "Irish Spring GREEEEEN",
+    title: "Ireland",
     description: "[One or two sentences describing this short film — placeholder copy.]",
     youtubeId: "sMIec1Gq5R0",
   },
   {
     id: "film-03",
-    title: "Swetty Weddy",
+    title: "Wedding",
     description: "[One or two sentences describing this short film — placeholder copy.]",
     youtubeId: "Oko53EBJz4s",
   },

@@ -39,6 +39,10 @@ export function OpenPanel({
   const survivorAxisX = isOpen ? OPEN_AXIS_X : AXIS_X;
   const CategoryIcon = ICONS[category.iconKey];
   const SelectedIcon = selectedItem ? ICONS[selectedItem.iconKey] : null;
+  // Video panels are tall (esp. vertical Shorts) — anchoring them at SELECT_Y like text
+  // panels crops the bottom off-screen. Center them in the full viewport height instead
+  // so the whole video always fits in frame; text panels keep the SELECT_Y anchor + scroll.
+  const isVideoPanel = !!selectedItem && selectedItem.kind === "content" && selectedItem.panelKey === "film";
 
   return (
     <>
@@ -86,15 +90,20 @@ export function OpenPanel({
         )}
       </motion.div>
 
-      {/* Content panel — spec §4.2: left 32vw, right 90vw (=58vw wide), heading near
-          SELECT_Y. Up/Down scrolls this internally while OPEN (spec §4.4). */}
+      {/* Content panel — spec §4.2: left 32vw, right 90vw (=58vw wide). Text panels anchor
+          near SELECT_Y and scroll internally (spec §4.4); video panels center vertically
+          in the full viewport instead so the whole video fits in frame. */}
       <AnimatePresence>
         {isOpen && selectedItem && (
           <motion.div
             key={`${category.id}:${selectedItem.id}`}
             ref={panelRef}
-            className="absolute z-40 overflow-y-auto"
-            style={{ left: "32vw", width: "58vw", top: `${SELECT_Y}vh`, bottom: "4vh" }}
+            className={`absolute z-40 overflow-y-auto ${isVideoPanel ? "flex flex-col justify-center" : ""}`}
+            style={
+              isVideoPanel
+                ? { left: "32vw", width: "58vw", top: 0, bottom: 0 }
+                : { left: "32vw", width: "58vw", top: `${SELECT_Y}vh`, bottom: "4vh" }
+            }
             initial={reduced ? false : { opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
             exit={reduced ? undefined : { opacity: 0 }}

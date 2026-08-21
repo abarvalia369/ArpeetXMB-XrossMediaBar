@@ -8,7 +8,12 @@ export function FilmPanel({ filmId }: { filmId: string }) {
   if (!film) return null;
   return (
     <div>
-      <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
+      {/* Capped to 65vh (not just 100% width) so the 16:9 box never grows taller than
+          the viewport has room for once centered — width shrinks to match instead. */}
+      <div
+        className="mx-auto aspect-video overflow-hidden rounded-lg bg-black"
+        style={{ width: "min(100%, calc(65vh * 16 / 9))" }}
+      >
         <iframe
           key={film.id}
           className="h-full w-full"
