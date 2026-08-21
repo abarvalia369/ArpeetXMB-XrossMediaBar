@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { SITE } from "@/content";
 
 const rodin = localFont({
   src: "../fonts/sce-ps3-rodin.ttf",
@@ -9,29 +10,27 @@ const rodin = localFont({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://arpeetbarvalia.com"),
+  metadataBase: new URL(SITE.seo.url),
   title: {
-    default: "Arpeet Barvalia",
-    template: "%s — Arpeet Barvalia",
+    default: SITE.name,
+    template: SITE.seo.titleTemplate,
   },
-  description:
-    "Portfolio of Arpeet Barvalia — CS & Data Science student at Rutgers, data engineer, and short-film maker.",
+  description: SITE.description,
   icons: {
-    icon: "/images/favicon.svg",
+    icon: SITE.seo.favicon,
   },
   openGraph: {
     type: "website",
-    title: "Arpeet Barvalia",
-    description:
-      "CS & Data Science student at Rutgers, data engineer, and short-film maker.",
-    images: ["/images/og-image.svg"],
-    url: "https://arpeetbarvalia.com/",
+    title: SITE.name,
+    description: SITE.tagline,
+    images: [SITE.seo.ogImage],
+    url: `${SITE.seo.url}/`,
   },
   twitter: {
     card: "summary_large_image",
-    title: "Arpeet Barvalia",
-    description: "CS & Data Science student at Rutgers, data engineer, and short-film maker.",
-    images: ["/images/og-image.svg"],
+    title: SITE.name,
+    description: SITE.tagline,
+    images: [SITE.seo.ogImage],
   },
 };
 

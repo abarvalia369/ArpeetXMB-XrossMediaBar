@@ -1,15 +1,8 @@
-export interface Film {
-  id: string;
-  title: string;
-  description: string;
-  poster: string;
-  src: string;
-  duration: string;
-  placeholder?: boolean;
-}
+import type { Film } from "./types";
 
 // Add a new film by adding an entry here, dropping the compressed .mp4 in
-// /public/videos and a poster frame in /public/images (see README).
+// /public/videos and a poster frame in /public/images (see README), then
+// referencing its id from a "film" item in content/menu.ts.
 export const FILMS: Film[] = [
   {
     id: "film-01",

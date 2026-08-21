@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { getSupabaseClient } from "@/lib/supabase";
+import { getSupabaseClient } from "@/src/lib/supabase";
+import { GUESTBOOK } from "@/content";
 
 interface Entry {
   name: string;
@@ -14,6 +15,7 @@ function formatTimestamp(iso: string) {
 }
 
 export function GuestbookEntriesPanel() {
+  const C = GUESTBOOK.entries;
   const supabase = React.useMemo(() => getSupabaseClient(), []);
   const [entries, setEntries] = React.useState<Entry[] | null>(null);
   const [loadError, setLoadError] = React.useState(false);
@@ -46,15 +48,11 @@ export function GuestbookEntriesPanel() {
 
   return (
     <div>
-      <h2 className="text-2xl font-semibold sm:text-3xl">Guestbook entries</h2>
+      <h2 className="text-2xl font-semibold sm:text-3xl">{C.heading}</h2>
       <ul className="mt-5 list-none">
-        {entries === null && !loadError && <p className="py-4 text-sm text-white/40">Loading entries…</p>}
-        {loadError && (
-          <p className="py-4 text-sm text-white/40">
-            {supabase ? "Couldn't load the guestbook right now. Try again later." : "Guestbook is not connected yet (missing Supabase env vars)."}
-          </p>
-        )}
-        {entries && entries.length === 0 && <p className="py-4 text-sm text-white/40">Be the first to sign the guestbook!</p>}
+        {entries === null && !loadError && <p className="py-4 text-sm text-white/40">{C.loading}</p>}
+        {loadError && <p className="py-4 text-sm text-white/40">{supabase ? C.loadFailed : C.notConnected}</p>}
+        {entries && entries.length === 0 && <p className="py-4 text-sm text-white/40">{C.empty}</p>}
         {entries?.map((entry, i) => (
           <li key={i} className="border-b border-white/10 py-3.5 last:border-none">
             <div className="flex items-baseline justify-between gap-3">

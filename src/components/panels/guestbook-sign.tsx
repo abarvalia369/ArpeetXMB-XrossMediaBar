@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { getSupabaseClient } from "@/lib/supabase";
+import { getSupabaseClient } from "@/src/lib/supabase";
+import { GUESTBOOK } from "@/content";
 
 const RATE_LIMIT_MS = 60_000;
 const RATE_LIMIT_KEY = "ab-guestbook-last-post";
@@ -32,6 +33,7 @@ function newChallenge() {
 }
 
 export function GuestbookSignPanel() {
+  const C = GUESTBOOK.sign;
   const supabase = React.useMemo(() => getSupabaseClient(), []);
   const [name, setName] = React.useState("");
   const [message, setMessage] = React.useState("");
@@ -51,34 +53,34 @@ export function GuestbookSignPanel() {
     setStatus({ text: "", kind: "" });
 
     if (website.trim() !== "") {
-      setStatus({ text: "Something went wrong. Please try again.", kind: "error" });
+      setStatus({ text: C.messages.honeypot, kind: "error" });
       return;
     }
     const wait = secondsUntilAllowed();
     if (wait > 0) {
-      setStatus({ text: `You're posting a bit fast — try again in ${wait}s.`, kind: "error" });
+      setStatus({ text: C.messages.rateLimited(wait), kind: "error" });
       return;
     }
     const trimmedName = name.trim();
     const trimmedMessage = message.trim();
     if (!trimmedName || !trimmedMessage) {
-      setStatus({ text: "Please fill in your name and a message.", kind: "error" });
+      setStatus({ text: C.messages.fillRequired, kind: "error" });
       return;
     }
     if (trimmedName.length > NAME_MAX) {
-      setStatus({ text: `Name must be ${NAME_MAX} characters or fewer.`, kind: "error" });
+      setStatus({ text: C.messages.nameTooLong(NAME_MAX), kind: "error" });
       return;
     }
     if (trimmedMessage.length > MESSAGE_MAX) {
-      setStatus({ text: `Message must be ${MESSAGE_MAX} characters or fewer.`, kind: "error" });
+      setStatus({ text: C.messages.messageTooLong(MESSAGE_MAX), kind: "error" });
       return;
     }
     if (Number(captchaValue) !== challenge.answer) {
-      setStatus({ text: "That's not quite right — check the math question.", kind: "error" });
+      setStatus({ text: C.messages.captchaWrong, kind: "error" });
       return;
     }
     if (!supabase) {
-      setStatus({ text: "Guestbook is not connected yet (missing Supabase env vars).", kind: "error" });
+      setStatus({ text: C.messages.notConnected, kind: "error" });
       return;
     }
 
@@ -87,12 +89,12 @@ export function GuestbookSignPanel() {
     setSubmitting(false);
 
     if (error) {
-      setStatus({ text: "Couldn't post right now. Please try again.", kind: "error" });
+      setStatus({ text: C.messages.postFailed, kind: "error" });
       return;
     }
 
     markPosted();
-    setStatus({ text: "Thanks for signing!", kind: "success" });
+    setStatus({ text: C.messages.success, kind: "success" });
     setName("");
     setMessage("");
     setCaptchaValue("");
@@ -101,11 +103,11 @@ export function GuestbookSignPanel() {
 
   return (
     <div>
-      <h2 className="text-2xl font-semibold sm:text-3xl">Sign the guestbook</h2>
+      <h2 className="text-2xl font-semibold sm:text-3xl">{C.heading}</h2>
       <form onSubmit={handleSubmit} className="mt-5 space-y-4" noValidate>
         <div>
           <label htmlFor="guestbook-name" className="mb-2 block text-xs uppercase tracking-widest text-white/50">
-            Name
+            {C.fields.name.label}
           </label>
           <input
             id="guestbook-name"
@@ -118,7 +120,7 @@ export function GuestbookSignPanel() {
         </div>
         <div>
           <label htmlFor="guestbook-message" className="mb-2 block text-xs uppercase tracking-widest text-white/50">
-            Message
+            {C.fields.message.label}
           </label>
           <textarea
             id="guestbook-message"
@@ -132,13 +134,13 @@ export function GuestbookSignPanel() {
         </div>
 
         <div aria-hidden="true" style={{ position: "absolute", left: -9999, width: 1, height: 1, overflow: "hidden" }}>
-          <label htmlFor="guestbook-website">Website</label>
+          <label htmlFor="guestbook-website">{C.fields.website.label}</label>
           <input id="guestbook-website" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
         </div>
 
         <div>
           <label htmlFor="guestbook-captcha" className="mb-2 block text-xs uppercase tracking-widest text-white/50">
-            What is {challenge.a} + {challenge.b}?
+            {C.fields.captcha.label(challenge.a, challenge.b)}
           </label>
           <input
             id="guestbook-captcha"
@@ -156,7 +158,7 @@ export function GuestbookSignPanel() {
             disabled={submitting}
             className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-black transition-transform hover:-translate-y-0.5 disabled:opacity-50"
           >
-            {submitting ? "Signing…" : "Sign the guestbook"}
+            {submitting ? C.submittingLabel : C.submitLabel}
           </button>
         </div>
         <p role="status" aria-live="polite" className={cnStatus(status.kind)}>

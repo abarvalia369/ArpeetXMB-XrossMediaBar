@@ -7,3 +7,7 @@ temporary screenshots/
 .DS_Store
 resume_swe.docx
 tsconfig.tsbuildinfo
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
