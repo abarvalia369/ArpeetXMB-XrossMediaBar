@@ -3,7 +3,7 @@
 import * as React from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { NAV, type Item } from "@/lib/nav-data";
-import { WaveRibbon } from "@/components/wave-ribbon";
+import { WavyBackground } from "@/components/ui/wavy-background";
 import { ExternalLinkPanel } from "@/components/panels/external-link-panel";
 
 // ---- Fixed screen anchors (spec §1), derived frame-by-frame from the PS3 XMB ----
@@ -279,9 +279,12 @@ export function XmbMenu() {
       onPointerUp={onPointerUp}
       className="fixed inset-0 overflow-hidden bg-black text-white outline-none"
     >
-      <WaveRibbon
-        className="pointer-events-none absolute left-0 w-full opacity-90"
-        style={{ top: `${ROW_Y}vh`, height: "42vh", transform: "translateY(-50%)" }}
+      <WavyBackground
+        containerClassName="absolute inset-0 pointer-events-none"
+        speed="slow"
+        blur={12}
+        waveWidth={40}
+        waveOpacity={0.35}
       />
 
       {/* Category row — z-index 1. In BROWSE, fully visible (spec §4.1). In OPEN, every
