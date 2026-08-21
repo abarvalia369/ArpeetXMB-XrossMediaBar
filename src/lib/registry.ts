@@ -53,9 +53,10 @@ export const ICONS: Record<IconKey, Ps3Icon> = {
   soundcloud: SoundCloudIcon,
 };
 
-/** Panels that take no extra props. The "film" panelKey is handled separately in
- * PanelBody — it needs a filmId, so it isn't a no-arg ComponentType. */
-export const PANELS: Record<Exclude<PanelKey, "film">, ComponentType> = {
+/** Panels that take no extra props. "film"/"spotify"/"soundcloud" are handled
+ * separately in PanelBody — each needs a per-item prop (filmId/embedUrl), so
+ * none of them is a no-arg ComponentType. */
+export const PANELS: Record<Exclude<PanelKey, "film" | "spotify" | "soundcloud">, ComponentType> = {
   home: HomeBioPanel,
   bio: BioPanel,
   experience: ExperiencePanel,

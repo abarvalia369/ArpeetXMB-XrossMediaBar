@@ -32,6 +32,8 @@ export type PanelKey =
   | "education"
   | "skills"
   | "film"
+  | "spotify"
+  | "soundcloud"
   | "contactMessage"
   | "guestbookSign"
   | "guestbookEntries";
@@ -58,12 +60,26 @@ export interface MenuFilmItem extends MenuItemCommon {
   filmId: string;
 }
 
-export interface MenuSimpleContentItem extends MenuItemCommon {
+export interface MenuSpotifyItem extends MenuItemCommon {
   kind: "content";
-  panelKey: Exclude<PanelKey, "film">;
+  panelKey: "spotify";
+  /** Full Spotify embed iframe src (open.spotify.com/embed/...). */
+  embedUrl: string;
 }
 
-export type MenuItem = MenuExternalItem | MenuFilmItem | MenuSimpleContentItem;
+export interface MenuSoundCloudItem extends MenuItemCommon {
+  kind: "content";
+  panelKey: "soundcloud";
+  /** Full SoundCloud embed iframe src (w.soundcloud.com/player/...). */
+  embedUrl: string;
+}
+
+export interface MenuSimpleContentItem extends MenuItemCommon {
+  kind: "content";
+  panelKey: Exclude<PanelKey, "film" | "spotify" | "soundcloud">;
+}
+
+export type MenuItem = MenuExternalItem | MenuFilmItem | MenuSpotifyItem | MenuSoundCloudItem | MenuSimpleContentItem;
 
 export interface MenuCategory {
   id: string;
