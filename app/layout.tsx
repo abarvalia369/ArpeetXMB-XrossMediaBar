@@ -41,7 +41,7 @@ export const viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={rodin.variable}>
-      <body className="font-sans antialiased bg-black text-white">{children}</body>
+      <body className="font-sans antialiased bg-background text-foreground">{children}</body>
     </html>
   );
 }

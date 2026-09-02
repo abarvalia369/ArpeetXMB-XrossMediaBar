@@ -253,3 +253,28 @@ export interface MiscContent {
   mainMenuAriaLabel: string;
   closeCategoryAriaLabel: (categoryLabel: string) => string;
 }
+
+// ---- Info panel (top-right status bar: avatar / notifications / clock / theme) ----
+
+export interface ProfileContent {
+  avatarSrc: string;
+  avatarAlt: string;
+}
+
+export interface NotificationEntry {
+  id: string;
+  title: string;
+  message: string;
+  /** ISO 8601 timestamp. */
+  timestamp: string;
+  read: boolean;
+}
+
+export interface InfoPanelContent {
+  panelAriaLabel: string;
+  notificationsTriggerAriaLabel: (unreadCount: number) => string;
+  notificationsHeading: string;
+  notificationsEmpty: string;
+  themeTriggerAriaLabel: string;
+  themeComingSoon: string;
+}

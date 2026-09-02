@@ -66,7 +66,7 @@ export function XmbMenu() {
       onKeyDown={onKeyDown}
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
-      className="fixed inset-0 overflow-hidden bg-black text-white outline-none"
+      className="fixed inset-0 overflow-hidden bg-background text-foreground outline-none"
     >
       <WavyBackground
         containerClassName="absolute inset-0 pointer-events-none"
