@@ -56,7 +56,7 @@ export const MENU: MenuCategory[] = [
         iconKey: "soundcloud",
         panelKey: "soundcloud",
         embedUrl:
-          "https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/playlists/soundcloud%253Aplaylists%253A1859727372&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true",
+          "https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/playlists/soundcloud%253Aplaylists%253A1859727372&color=%23404040&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true",
       },
     ],
   },

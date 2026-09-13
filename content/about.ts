@@ -11,7 +11,7 @@ export const ABOUT: AboutContent = {
       body: "Consolidated 5+ analytics APIs into SQL Server and deployed automated Python/SQL ETL pipelines with CI/CD, cutting manual reporting effort and troubleshooting time.",
     },
     {
-      dates: "MAY 2023 — PRESENT · NEW BRUNSWICK, NJ",
+      dates: "MAY 2023 — May 2026 · NEW BRUNSWICK, NJ",
       role: "Frontend Developer — Hack4Impact Rutgers Chapter",
       body: "Sustained >95% test coverage with automated Jest/RTL suites and cut initial load time 28% through code-splitting across 80+ reviewed commits.",
     },
@@ -24,13 +24,11 @@ export const ABOUT: AboutContent = {
   educationHeading: "Education",
   educationSchool: "Rutgers School of Arts and Sciences",
   educationDepartment: "Rutgers Honors College — New Brunswick, NJ",
-  educationDegree: "B.S. Computer Science & Data Science",
-  educationMeta: "GPA 3.7/4.0 · Expected May 2026",
+  educationDegrees: ["B.S. Computer Science", "B.S. Data Science"],
+  educationMeta: "GPA 3.7/4.0 · May 2026",
   skillsHeading: "Skills",
   skillGroups: [
-    { label: "Languages", items: ["Java (Spring Boot)", "Python", "SQL", "TypeScript/React", "C/C++", "Kotlin"] },
-    { label: "Tools & platforms", items: ["Git / CI-CD", "Docker", "AWS", "REST APIs", "JUnit / Jest", "Jira / Agile"] },
+    { label: "Languages", items: ["Java", "Python", "SQL", "JavaScript"] },
+    { label: "Tools & platforms", items: ["Git / CI-CD", "AWS", "REST APIs", "Unit Testing", "Power BI", "Tableau", "Micorsoft Office"] },
   ],
-  resumeButtonLabel: "Download résumé (coming soon)",
-  resumeButtonTitle: "Add resume.pdf to enable this button",
 };

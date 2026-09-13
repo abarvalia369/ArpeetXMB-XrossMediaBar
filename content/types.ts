@@ -146,12 +146,12 @@ export interface AboutContent {
   educationHeading: string;
   educationSchool: string;
   educationDepartment: string;
-  educationDegree: string;
+  /** One entry per degree (e.g. a dual-degree program) — add a new one by
+   * pushing another string here, no other fields to keep in sync. */
+  educationDegrees: string[];
   educationMeta: string;
   skillsHeading: string;
   skillGroups: SkillGroup[];
-  resumeButtonLabel: string;
-  resumeButtonTitle: string;
 }
 
 // ---- Films ----
@@ -252,4 +252,29 @@ export interface MiscContent {
   externalLink: ExternalLinkPanelContent;
   mainMenuAriaLabel: string;
   closeCategoryAriaLabel: (categoryLabel: string) => string;
+}
+
+// ---- Info panel (top-right status bar: avatar / notifications / clock / theme) ----
+
+export interface ProfileContent {
+  avatarSrc: string;
+  avatarAlt: string;
+}
+
+export interface NotificationEntry {
+  id: string;
+  title: string;
+  message: string;
+  /** ISO 8601 timestamp. */
+  timestamp: string;
+  read: boolean;
+}
+
+export interface InfoPanelContent {
+  panelAriaLabel: string;
+  notificationsTriggerAriaLabel: (unreadCount: number) => string;
+  notificationsHeading: string;
+  notificationsEmpty: string;
+  themeTriggerAriaLabel: string;
+  themeComingSoon: string;
 }

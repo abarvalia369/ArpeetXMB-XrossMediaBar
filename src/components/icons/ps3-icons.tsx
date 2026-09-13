@@ -1,3 +1,5 @@
+import * as React from "react";
+
 export interface IconProps {
   width?: string | number;
   height?: string | number;
@@ -22,6 +24,41 @@ function imageIcon(src: string): Ps3Icon {
       draggable={false}
       className={className}
       style={{ width, height, objectFit: "contain", display: "block" }}
+    />
+  );
+}
+
+/**
+ * Wraps a real brand-logo asset as a theme-colorable icon via CSS mask-image.
+ * The source PNGs under /public/icons/social are pre-processed (see
+ * scripts/notes in the PR that added them) so their RGB is pure white and
+ * only the alpha channel carries the shape — that keeps them correct under
+ * both `mask-mode: alpha` and the luminance-based fallback some engines use.
+ * `background-color: currentColor` means the rendered color always comes
+ * from the CSS `color` of an ancestor — never a value baked into this file.
+ * `sizePercent` is a per-icon fill-percentage (see the exports below for why
+ * each value was chosen) so visually different logo shapes read as the same
+ * weight in a row instead of the same raw bounding box.
+ */
+function maskIcon(src: string, sizePercent: number): Ps3Icon {
+  return ({ width = "100%", height = "100%", className }) => (
+    <span
+      aria-hidden="true"
+      className={className}
+      style={{
+        display: "inline-block",
+        width,
+        height,
+        backgroundColor: "currentColor",
+        WebkitMaskImage: `url(${src})`,
+        maskImage: `url(${src})`,
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+        WebkitMaskPosition: "center",
+        maskPosition: "center",
+        WebkitMaskSize: `${sizePercent}%`,
+        maskSize: `${sizePercent}%`,
+      }}
     />
   );
 }
@@ -98,65 +135,83 @@ export const ListIcon: Ps3Icon = (props) => (
   </svg>
 );
 
-export const GitHubIcon: Ps3Icon = (props) => (
-  <svg {...base(props)}>
-    <path d="M12 2.5a9.5 9.5 0 0 0-3 18.52c.48.09.65-.21.65-.46v-1.7c-2.64.57-3.2-1.14-3.2-1.14-.43-1.1-1.06-1.39-1.06-1.39-.86-.6.07-.58.07-.58.96.07 1.46.99 1.46.99.85 1.46 2.23 1.04 2.77.8.09-.62.33-1.04.6-1.28-2.11-.24-4.33-1.06-4.33-4.72 0-1.04.37-1.9.98-2.56-.1-.24-.43-1.22.09-2.54 0 0 .8-.26 2.62.98a9.05 9.05 0 0 1 4.78 0c1.82-1.24 2.62-.98 2.62-.98.52 1.32.19 2.3.1 2.54.6.66.98 1.52.98 2.56 0 3.67-2.23 4.48-4.35 4.71.34.3.65.87.65 1.76v2.6c0 .25.17.55.66.46A9.5 9.5 0 0 0 12 2.5Z" />
-  </svg>
-);
+// ---- Real brand-logo icons — sourced from brand_assets/icons, pre-processed
+// into theme-colorable masks (see maskIcon() above). Replaces the earlier
+// hand-drawn approximations of these five marks.
 
-export const LinkedInIcon: Ps3Icon = (props) => (
-  <svg {...base(props)}>
-    <rect x="3" y="3" width="18" height="18" rx="2.5" />
-    <rect x="6.2" y="9.6" width="2.7" height="8.4" fill="black" />
-    <circle cx="7.55" cy="6.4" r="1.55" fill="black" />
-    <path
-      d="M11.4 9.6h2.6v1.15c.5-.75 1.35-1.35 2.65-1.35 2 0 3.35 1.32 3.35 4.02V18h-2.7v-4.2c0-1.15-.45-1.93-1.5-1.93-.82 0-1.3.55-1.51 1.08-.08.19-.09.46-.09.73V18h-2.7c0-.03.03-7.5 0-8.4Z"
-      fill="black"
-    />
-  </svg>
-);
+// The octocat silhouette nearly fills its own square bounding box already
+// (it's a dense, organic shape), so a fairly tight fill reads correctly
+// next to the others without looking oversized.
+export const GitHubIcon = maskIcon("/icons/social/github.png", 88);
 
+// Source is the flat "in" lettermark extracted from the official app-icon
+// tile (the blue square field was dropped — see below). The letterforms
+// themselves are very bold/thick strokes, so — unlike a typical thin
+// letterform — this actually needs to be sized DOWN, not up, to avoid
+// reading heavier than the other four.
+export const LinkedInIcon = maskIcon("/icons/social/linkedin.png", 78);
+
+// Solid filled discs optically read larger than outlined/linear shapes at
+// the same box size, so this is sized down a bit more than the others to
+// balance it against GitHub/LinkedIn/SoundCloud in the same row.
+export const SpotifyGlyphIcon = maskIcon("/icons/social/spotify.png", 84);
+
+// This is the wide icon+wordmark lockup, not just the cloud glyph (the
+// asset provided only came as that combined lockup). Its bounding box is
+// ~2.3x wider than tall, so "contain"-style fitting inside a square box
+// already shrinks its height well below the others automatically; giving
+// it a large fill percentage here keeps its horizontal presence close to
+// full width so it doesn't also look small on top of being naturally thin.
+export const SoundCloudIcon = maskIcon("/icons/social/soundcloud.png", 96);
+
+// The provided Instagram asset is the official gradient app icon (glyph
+// distinguished from its field only by color, not transparency, and the
+// field itself has wide internal brightness variation) — auto-extracting a
+// clean single-tone glyph from that risks pulling in bits of the gradient
+// as false "edges." Kept as a hand-drawn glyph instead, matching Instagram's
+// actual camera-outline mark. Re-drawn from the original (which had solid
+// `fill="black"` cutouts for the lens hole and corner dot — a hardcoded
+// color that would look wrong on a light theme) to use `fill-rule="evenodd"`
+// instead, so the holes are real transparency and the whole glyph is one
+// `currentColor` fill with no baked-in color at all.
 export const InstagramIcon: Ps3Icon = (props) => (
   <svg {...base(props)}>
-    <rect x="3" y="3" width="18" height="18" rx="5" />
-    <circle cx="12" cy="12" r="4.2" fill="black" />
-    <circle cx="12" cy="12" r="2.5" />
-    <circle cx="17.15" cy="6.85" r="1.15" fill="black" />
+    <rect x="3.3" y="3.3" width="17.4" height="17.4" rx="4.6" fill="none" stroke="currentColor" strokeWidth="2.3" />
+    <circle cx="12" cy="12" r="3.9" fill="none" stroke="currentColor" strokeWidth="2.3" />
+    <circle cx="16.4" cy="7.6" r="1.25" />
   </svg>
 );
 
-export const SpotifyGlyphIcon: Ps3Icon = (props) => (
+// ---- Info-panel chrome icons ----
+
+export const BellIcon: Ps3Icon = (props) => (
   <svg {...base(props)}>
-    <circle cx="12" cy="12" r="9.5" />
-    <path
-      d="M6.9 9.9c3.2-.95 6.9-.75 9.6.85"
-      stroke="black"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      fill="none"
-    />
-    <path
-      d="M7.3 12.85c2.65-.75 5.7-.6 8 .75"
-      stroke="black"
-      strokeWidth="1.3"
-      strokeLinecap="round"
-      fill="none"
-    />
-    <path
-      d="M7.7 15.6c2.2-.55 4.7-.45 6.6.68"
-      stroke="black"
-      strokeWidth="1.15"
-      strokeLinecap="round"
-      fill="none"
-    />
+    <path d="M12 2.25c-.55 0-1 .45-1 1v.62C7.9 4.36 6 6.7 6 9.5v3.6l-1.72 2.58a.9.9 0 0 0 .75 1.4h13.94a.9.9 0 0 0 .75-1.4L18 13.1V9.5c0-2.8-1.9-5.14-5-5.63V3.25c0-.55-.45-1-1-1Z" />
+    <path d="M9.6 19.2a2.4 2.4 0 0 0 4.8 0Z" />
   </svg>
 );
 
-export const SoundCloudIcon: Ps3Icon = (props) => (
-  <svg {...base(props)}>
-    <rect x="4" y="12.5" width="1.6" height="5.5" rx="0.8" />
-    <rect x="6.4" y="10.5" width="1.6" height="7.5" rx="0.8" />
-    <rect x="8.8" y="8.8" width="1.6" height="9.2" rx="0.8" />
-    <path d="M11.2 18h6.4a3 3 0 0 0 .35-5.98A4.4 4.4 0 0 0 13.6 8.6c-.5 0-.97.09-1.4.25a.6.6 0 0 0-.4.57V17.4a.6.6 0 0 0 .6.6Z" />
-  </svg>
-);
+export const PaletteIcon: Ps3Icon = (props) => {
+  // A real <mask> cutout, not an overlapping same-color-as-background paint
+  // trick — mask luminance (white=visible/black=hidden) is a definition-time
+  // concept, not a rendered pixel color, so this stays correct under any
+  // theme without needing currentColor inside the mask itself. useId() keeps
+  // the mask reference collision-safe if this icon is ever rendered more
+  // than once on the same page.
+  const maskId = React.useId();
+  return (
+    <svg {...base(props)}>
+      <mask id={maskId}>
+        <rect x="0" y="0" width="24" height="24" fill="white" />
+        <circle cx="7.3" cy="10.6" r="1.35" fill="black" />
+        <circle cx="9.9" cy="6.9" r="1.35" fill="black" />
+        <circle cx="14.5" cy="6.9" r="1.35" fill="black" />
+        <circle cx="17" cy="10.6" r="1.35" fill="black" />
+      </mask>
+      <path
+        mask={`url(#${maskId})`}
+        d="M12 2.5c-5.25 0-9.5 4.25-9.5 9.5s4.25 9.5 9.5 9.5c.97 0 1.75-.78 1.75-1.75 0-.46-.17-.87-.46-1.19-.28-.31-.45-.72-.45-1.16 0-.97.78-1.75 1.75-1.75h2.05c2.15 0 3.9-1.75 3.9-3.9C20.54 6.4 16.75 2.5 12 2.5Z"
+      />
+    </svg>
+  );
+};

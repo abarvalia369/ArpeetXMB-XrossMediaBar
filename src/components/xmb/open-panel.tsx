@@ -43,6 +43,14 @@ export function OpenPanel({
   // panels crops the bottom off-screen. Center them in the full viewport height instead
   // so the whole video always fits in frame; text panels keep the SELECT_Y anchor + scroll.
   const isVideoPanel = !!selectedItem && selectedItem.kind === "content" && selectedItem.panelKey === "film";
+  // Music embeds (Spotify/SoundCloud) get a wider, vertically-centered container too,
+  // so the player reads as a prominent, screen-filling element rather than a small
+  // fixed-height widget squeezed into the standard 58vw text-panel column. The left
+  // edge only comes in to 26vw (not further, like video's 32vw) — the OPEN-state
+  // survivor label can extend out to ~21vw (OPEN_AXIS_X + LABEL_OFFSET), so this still
+  // keeps a clear margin from it.
+  const isMusicPanel = !!selectedItem && selectedItem.kind === "content" && (selectedItem.panelKey === "spotify" || selectedItem.panelKey === "soundcloud");
+  const isFullBleedPanel = isVideoPanel || isMusicPanel;
 
   return (
     <>
@@ -90,19 +98,29 @@ export function OpenPanel({
         )}
       </motion.div>
 
-      {/* Content panel — spec §4.2: left 32vw, right 90vw (=58vw wide). Text panels anchor
-          near SELECT_Y and scroll internally (spec §4.4); video panels center vertically
-          in the full viewport instead so the whole video fits in frame. */}
+      {/* Content panel — spec §4.2: left 32vw, right 90vw (=58vw wide) by default. Text
+          panels anchor near SELECT_Y and scroll internally (spec §4.4); video AND music
+          panels center vertically in the full viewport instead (video so the whole video
+          fits in frame, music so the player reads as a big, prominent element). Music's
+          left edge only moves in to 31vw (not 32vw) — measured directly in the browser,
+          not assumed: the OPEN-state survivor label (e.g. "SoundCloud", the longest of
+          these item labels) renders with its right edge at ~29.9vw at 1440px width, so
+          31vw keeps a real, checked margin rather than a guessed one. Most of the size
+          gain instead comes from extending the right edge out to 97vw (safe — nothing
+          else occupies that space once BROWSE-state content is hidden) and from the
+          taller iframe heights in the panel components themselves. */}
       <AnimatePresence>
         {isOpen && selectedItem && (
           <motion.div
             key={`${category.id}:${selectedItem.id}`}
             ref={panelRef}
-            className={`absolute z-40 overflow-y-auto ${isVideoPanel ? "flex flex-col justify-center" : ""}`}
+            className={`absolute z-40 overflow-y-auto ${isFullBleedPanel ? "flex flex-col justify-center" : ""}`}
             style={
-              isVideoPanel
-                ? { left: "32vw", width: "58vw", top: 0, bottom: 0 }
-                : { left: "32vw", width: "58vw", top: `${SELECT_Y}vh`, bottom: "4vh" }
+              isMusicPanel
+                ? { left: "31vw", width: "66vw", top: 0, bottom: 0 }
+                : isVideoPanel
+                  ? { left: "32vw", width: "58vw", top: 0, bottom: 0 }
+                  : { left: "32vw", width: "58vw", top: `${SELECT_Y}vh`, bottom: "4vh" }
             }
             initial={reduced ? false : { opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}

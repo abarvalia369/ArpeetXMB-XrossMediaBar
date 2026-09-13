@@ -9,3 +9,6 @@ export { FILMS } from "./films";
 export { CONTACT } from "./contact";
 export { GUESTBOOK } from "./guestbook";
 export { MISC } from "./misc";
+export { PROFILE } from "./profile";
+export { NOTIFICATIONS } from "./notifications";
+export { INFO_PANEL } from "./info-panel";
