@@ -39,12 +39,14 @@ export function EducationPanel() {
       <h2 className="text-2xl font-semibold sm:text-3xl">{ABOUT.educationHeading}</h2>
       <p className="mt-5 font-semibold">{ABOUT.educationSchool}</p>
       <p className="text-sm text-white/50">{ABOUT.educationDepartment}</p>
-      {ABOUT.educationDegrees.map((degree) => (
-        <p key={degree} className="mt-2 text-sm">
-          {degree}
-        </p>
-      ))}
-      <p className="mt-1 font-mono text-xs text-white/40">{ABOUT.educationMeta}</p>
+      <div className="mt-4">
+        <p className="text-sm">{ABOUT.educationDegree1}</p>
+        <p className="mt-1 font-mono text-xs text-white/40">{ABOUT.educationMeta1}</p>
+      </div>
+      <div className="mt-4">
+        <p className="text-sm">{ABOUT.educationDegree2}</p>
+        <p className="mt-1 font-mono text-xs text-white/40">{ABOUT.educationMeta2}</p>
+      </div>
     </div>
   );
 }

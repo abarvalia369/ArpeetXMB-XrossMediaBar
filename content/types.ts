@@ -146,9 +146,11 @@ export interface AboutContent {
   educationHeading: string;
   educationSchool: string;
   educationDepartment: string;
-  /** One entry per degree — rendered as separate lines (e.g. a dual-degree program). */
-  educationDegrees: string[];
-  educationMeta: string;
+  /** Two degrees (e.g. a dual-degree program), each with its own meta line. */
+  educationDegree1: string;
+  educationMeta1: string;
+  educationDegree2: string;
+  educationMeta2: string;
   skillsHeading: string;
   skillGroups: SkillGroup[];
 }
