@@ -24,10 +24,8 @@ export const ABOUT: AboutContent = {
   educationHeading: "Education",
   educationSchool: "Rutgers School of Arts and Sciences",
   educationDepartment: "Rutgers Honors College — New Brunswick, NJ",
-  educationDegree1: "B.S. Computer Science",
-  educationMeta1: "GPA 3.7/4.0 · May 2026",
-  educationDegree2: "B.S. Data Science",
-  educationMeta2: "B.S. Data Science",
+  educationDegrees: ["B.S. Computer Science", "B.S. Data Science"],
+  educationMeta: "GPA 3.7/4.0 · May 2026",
   skillsHeading: "Skills",
   skillGroups: [
     { label: "Languages", items: ["Java", "Python", "SQL", "JavaScript"] },
