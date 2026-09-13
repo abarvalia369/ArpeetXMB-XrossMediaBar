@@ -146,12 +146,11 @@ export interface AboutContent {
   educationHeading: string;
   educationSchool: string;
   educationDepartment: string;
-  educationDegree: string;
+  /** One entry per degree — rendered as separate lines (e.g. a dual-degree program). */
+  educationDegrees: string[];
   educationMeta: string;
   skillsHeading: string;
   skillGroups: SkillGroup[];
-  resumeButtonLabel: string;
-  resumeButtonTitle: string;
 }
 
 // ---- Films ----

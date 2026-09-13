@@ -29,17 +29,6 @@ export function ExperiencePanel() {
           <ShotItem key={entry.role} dates={entry.dates} role={entry.role} body={entry.body} />
         ))}
       </ol>
-      <button
-        type="button"
-        aria-disabled="true"
-        title={ABOUT.resumeButtonTitle}
-        className="mt-8 inline-flex cursor-not-allowed items-center gap-2 rounded-full border border-white/20 px-5 py-2.5 text-sm text-white/60"
-      >
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-          <path d="M12 3v13m0 0l-4-4m4 4l4-4M5 21h14" />
-        </svg>
-        {ABOUT.resumeButtonLabel}
-      </button>
     </div>
   );
 }
@@ -50,7 +39,11 @@ export function EducationPanel() {
       <h2 className="text-2xl font-semibold sm:text-3xl">{ABOUT.educationHeading}</h2>
       <p className="mt-5 font-semibold">{ABOUT.educationSchool}</p>
       <p className="text-sm text-white/50">{ABOUT.educationDepartment}</p>
-      <p className="mt-2 text-sm">{ABOUT.educationDegree}</p>
+      {ABOUT.educationDegrees.map((degree) => (
+        <p key={degree} className="mt-2 text-sm">
+          {degree}
+        </p>
+      ))}
       <p className="mt-1 font-mono text-xs text-white/40">{ABOUT.educationMeta}</p>
     </div>
   );
