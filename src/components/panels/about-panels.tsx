@@ -41,12 +41,12 @@ export function EducationPanel() {
       <p className="text-sm text-white/50">{ABOUT.educationDepartment}</p>
       <div className="pl-4">
         {ABOUT.educationDegrees.map((degree) => (
-          <p key={degree} className="mt-2 text-sm">
-            {degree}
-          </p>
+          <div key={degree} className="mt-2">
+            <p className="text-sm">{degree}</p>
+            <p className="mt-0.5 font-mono text-xs text-white/40">{ABOUT.educationMeta}</p>
+          </div>
         ))}
       </div>
-      <p className="mt-1 font-mono text-xs text-white/40">{ABOUT.educationMeta}</p>
     </div>
   );
 }
